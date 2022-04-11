@@ -9,6 +9,9 @@ import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, tr
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (AnchorAlignment(..), Length(..), Transform(..))
+import TypedSvg exposing (font)
+import TypedSvg.Types exposing (px, FontWeight(..))
+
 
 
 w : Float
@@ -57,8 +60,11 @@ scatterplot =
             , fontFamily [ "sans-serif" ]
             ]
             [ 
-            -- text [] []
-            circle [ cx 0, cy 0, r (radius*10) ] []
+            text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+            [ text "Test Punkt"],
+
+            circle [ cx 0, cy 0, r (radius) ] [] 
+            
             ]
         ]
 
@@ -67,6 +73,6 @@ main : Html msg
 main =
     Html.div []
         [ Html.p []
-            [ text "Hello World" ]
+            [ text "Hello World!" ]
         , scatterplot
         ]
