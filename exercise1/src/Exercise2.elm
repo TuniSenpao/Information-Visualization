@@ -10,17 +10,6 @@ import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
 
-
-    -- my_cars |> List.filterMap ( Maybe.map3 (a,b,c) (a,b, Just c) car.cityMPG car.retailPrice car.vehicleName)
-    -- XyData "CityMPG" "RetailPrice"  (List.map (\a -> (a.vehicleName, a.retailPrice, a.cityMPG)) (List.filterMap (\b -> Maybe.map3 (\b -> ) b.retailPrice b.cityMPG b.vehicleName) my_cars))
-
-    --List.filterMap (\a -> Maybe.map2 (+) a.retailPrice a.cityMPG) my_cars    
-
-    -- XyData "Beschriftung" "fehlt" []
-
-    -- List.filterMap
-    -- Maybe.map3
-    -- my_cars
 w : Float
 w =
     900
@@ -54,11 +43,16 @@ defaultExtent =
 scatterplot : XyData -> Svg msg
 scatterplot model =
     let
-        {- hier können Sie die Beschriftung des Testpunkts berechnen -}
-        -- TODO
+        filteredCars =
+            filterAndReduceCars cars
+
         kreisbeschriftung : String
         kreisbeschriftung =
-            ""
+            case (List.head filteredCars.data) of
+                Just point ->
+                    point.pointName
+                _ ->
+                    ""
     in
     svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
         [ style [] [ TypedSvg.Core.text """
@@ -109,10 +103,6 @@ pointsToXyData points =
     XyData "" "" []
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
-    -- TODO
-    {- hier kommt ihr Code zum Filtern hin -}
-
-    -- XyData "City MPG" "Retail Price" (List.map (\car -> Maybe.map3 (\name city price -> Point name city price) car.vehicleName car.cityMPG car.retailPrice) my_cars)
     let 
        
         car_to_point : Car -> Maybe Point
@@ -162,12 +152,9 @@ main =
     Html.div []
         [ Html.p []
             [
-                -- TODO
-                {- Code für die Ausgabe der Listenlängen kommt hierher -}
                 text <| "Original Car List: " ++ numberCars  ,
                 text " , ",
                 text <| "Reduced Car List: " ++ numberFilterCars
-
             ]
         , scatterplot filteredCars
         ]
