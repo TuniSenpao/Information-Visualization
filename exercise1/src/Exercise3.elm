@@ -1,4 +1,4 @@
-module Exercise2 exposing (..)
+module Exercise3 exposing (..)
 
 import Axis
 import Html exposing (Html, text)
@@ -55,10 +55,59 @@ scatterplot : XyData -> Svg msg
 scatterplot model =
     let
         {- hier können Sie die Beschriftung des Testpunkts berechnen -}
-        -- TODO
         kreisbeschriftung : String
         kreisbeschriftung =
             ""
+
+        xValues : List Float
+        xValues =
+            List.map .x model.data
+
+        yValues : List Float
+        yValues =
+            List.map .y model.data
+
+        wideExtent : List Float -> ( Float, Float )
+        wideExtent values =
+            defaultExtent
+
+        xScale : List Float -> ContinuousScale Float
+        xScale values =
+            Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
+
+
+        yScale : List Float -> ContinuousScale Float
+        yScale values =
+            Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
+
+        xScaleLocal : ContinuousScale Float
+        xScaleLocal =
+            xScale xValues
+
+        yScaleLocal : ContinuousScale Float
+        yScaleLocal =
+            yScale yValues
+
+        xAxis : List Float -> Svg msg
+        xAxis values =
+            Axis.bottom [ Axis.tickCount tickCount ] (xScale values)
+
+
+        yAxis : List Float -> Svg msg
+        yAxis values =
+            Axis.left [ Axis.tickCount tickCount ] (yScale values)
+            
+        half : ( Float, Float ) -> Float
+        half t =
+            (Tuple.second t - Tuple.first t) / 2
+
+        labelPositions : { x : Float, y : Float }
+        labelPositions =
+            { x = wideExtent xValues |> half
+            , y = wideExtent yValues |> Tuple.second
+            }
+
+
     in
     svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
         [ style [] [ TypedSvg.Core.text """
