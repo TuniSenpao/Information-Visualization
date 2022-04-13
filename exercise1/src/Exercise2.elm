@@ -97,10 +97,7 @@ carHasNothingValue car =
     
     else
         Just car
-
-pointsToXyData : List Point -> XyData
-pointsToXyData points =
-    XyData "" "" []
+    
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
     let 

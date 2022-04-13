@@ -9,6 +9,7 @@ import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, tr
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
+import TypedSvg.Attributes exposing (orientation)
 
 
     -- my_cars |> List.filterMap ( Maybe.map3 (a,b,c) (a,b, Just c) car.cityMPG car.retailPrice car.vehicleName)
@@ -54,14 +55,19 @@ defaultExtent =
 scatterplot : XyData -> Svg msg
 scatterplot model =
     let
-        {- hier können Sie die Beschriftung des Testpunkts berechnen -}
+        filteredCars =
+            filterAndReduceCars cars
         kreisbeschriftung : String
         kreisbeschriftung =
-            ""
+            case (List.head filteredCars.data) of
+                Just point ->
+                    point.pointName
+                _ ->
+                    ""
 
         xValues : List Float
         xValues =
-            List.map .x model.data
+            List.map .x model.data  
 
         yValues : List Float
         yValues =
@@ -69,7 +75,21 @@ scatterplot model =
 
         wideExtent : List Float -> ( Float, Float )
         wideExtent values =
-            defaultExtent
+            case (Statistics.extent values) of
+                Just (a , b) ->
+                    -- (a, b)
+                    if (a - (a / toFloat (2*tickCount))) > 0 then
+                        if (b- (a / toFloat (2*tickCount))) > 0 then
+                            (a + (2*(a / toFloat (2*tickCount))), b + (2*(a/toFloat (2*tickCount))))
+                        else
+                            (a + (2*(a / toFloat (2*tickCount))), 0)
+                    else
+                        if (b- (a / toFloat (2*tickCount))) > 0 then
+                            (0,  b + (2*(a/toFloat (2*tickCount))))
+                        else
+                            (0, 0)
+                _ ->
+                    defaultExtent
 
         xScale : List Float -> ContinuousScale Float
         xScale values =
@@ -116,19 +136,40 @@ scatterplot model =
             .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(118, 214, 78); }
             .point:hover text { display: inline; }
           """ ]
-        , g
-            [ transform [ Translate (padding - 1) (padding - 1) ]
-            , class [ "point" ]
-            , fontSize <| Px 10.0
-            , fontFamily [ "sans-serif" ]
-            ]
-            [
-            text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-            [ text kreisbeschriftung],
-
-            circle [ cx 0, cy 0, r (radius) ] [] 
+        ,
+        g [class ["xaxis"], transform [ Translate (padding) (h-padding)]]
+        [ 
+            xAxis xValues 
+            ,
+            -- TODO: hier soll was mit der labelPositions gemacht werden
+            text_ [x ((w - 2*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+                [ text "Retail Price"]
             
-            ]
+        ]
+        ,
+        g [class ["yaxis"], transform [ Translate (padding) (padding)]]
+        [ 
+            yAxis yValues 
+            ,
+            text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+            [ text "Retail Price"]
+        ]
+        
+        
+        -- , g
+        --     [ transform [ Translate (padding - 1) (padding - 1) ]
+        --     , class [ "point" ]
+        --     , fontSize <| Px 10.0
+        --     , fontFamily [ "sans-serif" ]
+        --     ]
+        --     [
+        --     text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+        --     [ text kreisbeschriftung],
+
+        --     circle [ cx 0, cy 0, r (radius) ] [] 
+            
+        --     ]
+
         ]
 
 
@@ -163,22 +204,18 @@ filterAndReduceCars my_cars =
 
     -- XyData "City MPG" "Retail Price" (List.map (\car -> Maybe.map3 (\name city price -> Point name city price) car.vehicleName car.cityMPG car.retailPrice) my_cars)
     let 
-       
-        car_to_point : Car -> Maybe Point
-        car_to_point car = 
-            let
-                beschriftung : Int -> Int -> String -> String
-                beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
-            in
-            case (car.cityMPG , car.retailPrice) of
-                (Just cityMPG, Just retailPrice) ->
-                    Just (Point car.vehicleName (toFloat cityMPG) (toFloat retailPrice))    
-                _ ->
-                    Nothing
-
-        filtered_cars : List Point
-        filtered_cars = List.filterMap carPointMap my_cars
-
+        -- car_to_point : Car -> Maybe Point
+        -- car_to_point car = 
+        --     let
+        --         beschriftung : Int -> Int -> String -> String
+        --         beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
+        --     in
+        --     case (car.cityMPG , car.retailPrice) of
+        --         (Just cityMPG, Just retailPrice) ->
+        --             Just (Point car.vehicleName (toFloat cityMPG) (toFloat retailPrice))    
+        --         _ ->
+        --             Nothing
+        
         -- zweite Variante von car_to_point
         carPointMap : Car -> Maybe Point
         carPointMap car = 
@@ -188,8 +225,13 @@ filterAndReduceCars my_cars =
 
                 cityMPG_and_retailPrice_to_point : Int -> Int -> Point
                 cityMPG_and_retailPrice_to_point c r = Point (beschriftung c r car.vehicleName) (toFloat c) (toFloat r) 
-            in
+            in            
             Maybe.map2 cityMPG_and_retailPrice_to_point car.cityMPG car.retailPrice
+
+        filtered_cars : List Point
+        filtered_cars = List.filterMap carPointMap my_cars
+
+       
     in
 
     XyData "cityMPG" "retailPrice" filtered_cars
