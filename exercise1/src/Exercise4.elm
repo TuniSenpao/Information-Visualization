@@ -1,4 +1,4 @@
-module Exercise3 exposing (..)
+module Exercise4 exposing (..)
 
 import Axis
 import Html exposing (Html, text)
@@ -55,15 +55,6 @@ defaultExtent =
 scatterplot : XyData -> Svg msg
 scatterplot model =
     let
-        filteredCars =
-            filterAndReduceCars cars
-        kreisbeschriftung : String
-        kreisbeschriftung =
-            case (List.head filteredCars.data) of
-                Just point ->
-                    point.pointName
-                _ ->
-                    ""
 
         xValues : List Float
         xValues =
@@ -129,6 +120,15 @@ scatterplot model =
 
         linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
 
+        point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
+        point scaleX scaleY xyPoint =
+            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
+                [ 
+                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+                    [ text xyPoint.pointName],
+
+                    circle [ cx 0, cy 0, r (radius) ] [] 
+                ]
     in
     svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
         [ style [] [ TypedSvg.Core.text """
@@ -154,6 +154,9 @@ scatterplot model =
             text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
             [ text "Retail Price"]
         ]
+
+        , g [ transform [ Translate padding padding ] ]
+            (List.map (point xScaleLocal yScaleLocal) model.data)
 
         ]
 
@@ -182,19 +185,6 @@ carHasNothingValue car =
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
     let 
-        -- zweite Variante von carPointMap
-
-        -- car_to_point : Car -> Maybe Point
-        -- car_to_point car = 
-        --     let
-        --         beschriftung : Int -> Int -> String -> String
-        --         beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
-        --     in
-        --     case (car.cityMPG , car.retailPrice) of
-        --         (Just cityMPG, Just retailPrice) ->
-        --             Just (Point car.vehicleName (toFloat cityMPG) (toFloat retailPrice))    
-        --         _ ->
-        --             Nothing
         
         carPointMap : Car -> Maybe Point
         carPointMap car = 
