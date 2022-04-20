@@ -75,19 +75,18 @@ scatterplot model =
 
         wideExtent : List Float -> ( Float, Float )
         wideExtent values =
+        
             case (Statistics.extent values) of
                 Just (a , b) ->
+                    let
+                        data_width = b - a
+                        heuristic = data_width / toFloat (2 * tickCount)
+                    in
                     -- (a, b)
-                    if (a - (a / toFloat (2*tickCount))) > 0 then
-                        if (b- (a / toFloat (2*tickCount))) > 0 then
-                            (a + (2*(a / toFloat (2*tickCount))), b + (2*(a/toFloat (2*tickCount))))
-                        else
-                            (a + (2*(a / toFloat (2*tickCount))), 0)
+                    if a - heuristic > 0 then
+                        (a - heuristic, b + heuristic )
                     else
-                        if (b- (a / toFloat (2*tickCount))) > 0 then
-                            (0,  b + (2*(a/toFloat (2*tickCount))))
-                        else
-                            (0, 0)
+                        (0,  b + heuristic)
                 _ ->
                     defaultExtent
 
@@ -137,13 +136,13 @@ scatterplot model =
             .point:hover text { display: inline; }
           """ ]
         ,
-        g [class ["xaxis"], transform [ Translate (padding) (h-padding)]]
+        g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
         [ 
             xAxis xValues 
             ,
             -- TODO: hier soll was mit der labelPositions gemacht werden
             text_ [x ((w - 2*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text "Retail Price"]
+                [ text "cityMPG"]
             
         ]
         ,
@@ -199,11 +198,9 @@ pointsToXyData points =
     XyData "" "" []
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
-    -- TODO
-    {- hier kommt ihr Code zum Filtern hin -}
-
-    -- XyData "City MPG" "Retail Price" (List.map (\car -> Maybe.map3 (\name city price -> Point name city price) car.vehicleName car.cityMPG car.retailPrice) my_cars)
     let 
+        -- zweite Variante von carPointMap
+
         -- car_to_point : Car -> Maybe Point
         -- car_to_point car = 
         --     let
@@ -216,7 +213,6 @@ filterAndReduceCars my_cars =
         --         _ ->
         --             Nothing
         
-        -- zweite Variante von car_to_point
         carPointMap : Car -> Maybe Point
         carPointMap car = 
             let
@@ -253,8 +249,6 @@ main =
     Html.div []
         [ Html.p []
             [
-                -- TODO
-                {- Code für die Ausgabe der Listenlängen kommt hierher -}
                 text <| "Original Car List: " ++ numberCars  ,
                 text " , ",
                 text <| "Reduced Car List: " ++ numberFilterCars
