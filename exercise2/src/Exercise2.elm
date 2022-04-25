@@ -216,7 +216,7 @@ filterAndReduceCars my_cars =
                 beschriftung : Int -> Int -> String -> String
                 beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
             in
-            if car.carType == chosenCarType then
+            -- if car.carType == chosenCarType then
                 case (car.cityMPG , car.retailPrice) of
                     (Just cityMPG, Just retailPrice) ->
                         case (car.carLen, car.dealerCost) of 
@@ -226,8 +226,8 @@ filterAndReduceCars my_cars =
                                 Nothing   
                     _ ->
                         Nothing
-            else
-                Nothing 
+            -- else
+            --     Nothing 
 
         filtered_cars : List Point
         filtered_cars = List.filterMap car_to_point my_cars
@@ -271,6 +271,30 @@ getAverage carsList =
         carsMPG = List.map carToMPG carsList
     in 
     Stat.average (List.map toFloat carsMPG)
+
+getCarsLowerMPG : List Car -> List Car
+getCarsLowerMPG my_cars =
+    let
+        carMPGIsLower : Car -> Bool
+        carMPGIsLower car =
+            if car.cityMPG < getAverage (filterCars cars) then
+                True 
+            else 
+                False
+    in
+    List.filterMap carMPGIsLower (filterCars cars)
+
+getCarsHigherMPG : List Car -> List Car
+getCarsHigherMPG my_cars =
+    let
+        carMPGIsHigher : Car -> Bool
+        carMPGIsHigher car =
+            if car.cityMPG > getAverage (filterCars cars) then
+                True 
+            else 
+                False
+    in
+    List.filterMap carMPGIsHigher (filterCars cars)
 
 
 main : Html msg
