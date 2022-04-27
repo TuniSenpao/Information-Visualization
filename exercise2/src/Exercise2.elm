@@ -196,19 +196,6 @@ carHasNothingValue car =
         Just car
 
 
-{-
-Filtern sie die Daten, so dass keine fehlenden Werte auf den vier Attributen cityMPG, retailPrice, dealerCost und carLen vorhanden sind. 
-Wählen sie weiterhin eine der Autoklassen aus und bestimmen Sie den durchschnittlichen Stadt-Verbrauch in Miles per Gallon in dieser Klasse. 
-Auf diese Weise wird die gefilterte Automenge in drei Teile partitioniert: 
-    (1) Autos, die nicht in der gewählte Klasse sind, 
-    (2) Autos in der gewählten Klasse unterhalb des durchschnittlichen Verbrauchs in Miles per Gallon und 
-    (3) Autos in der gewählten Klasse oberhalb des durchschnittlichen Verbrauchs in Miles per Gallon.
-
-Geben sie in ihrem Elm-Programm zu Beginn die gewählte Klasse und die Länge der drei Listen und den durchschnittlichen Verbrauch (cityMpg) aus.
-
--}
-
--- Könnte CarsToPoints werden oder sowas
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
     let 
