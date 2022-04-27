@@ -11,12 +11,13 @@ import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
 import TypedSvg.Attributes exposing (orientation)
 import Stat
+import Round
 
 
 
 chosenCarType : CarType
 chosenCarType = 
-    Pickup
+    Wagon
 
 chosenCarTypeString : String
 chosenCarTypeString =
@@ -206,6 +207,8 @@ Auf diese Weise wird die gefilterte Automenge in drei Teile partitioniert:
 Geben sie in ihrem Elm-Programm zu Beginn die gewählte Klasse und die Länge der drei Listen und den durchschnittlichen Verbrauch (cityMpg) aus.
 
 -}
+
+-- Könnte CarsToPoints werden oder sowas
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
     let 
@@ -216,7 +219,6 @@ filterAndReduceCars my_cars =
                 beschriftung : Int -> Int -> String -> String
                 beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
             in
-            -- if car.carType == chosenCarType then
                 case (car.cityMPG , car.retailPrice) of
                     (Just cityMPG, Just retailPrice) ->
                         case (car.carLen, car.dealerCost) of 
@@ -226,8 +228,6 @@ filterAndReduceCars my_cars =
                                 Nothing   
                     _ ->
                         Nothing
-            -- else
-            --     Nothing 
 
         filtered_cars : List Point
         filtered_cars = List.filterMap car_to_point my_cars
@@ -237,8 +237,8 @@ filterAndReduceCars my_cars =
 
     XyData "cityMPG" "retailPrice" filtered_cars
 
-filterCars : List Car -> List Car
-filterCars all_cars = 
+filterCarsAndCarModel : List Car -> ( List Car, List Car)
+filterCarsAndCarModel all_cars = 
     let 
         is_car : Car -> Bool
         is_car car = 
@@ -255,7 +255,9 @@ filterCars all_cars =
             else
                 False
     in 
-    List.filter is_car all_cars
+
+    List.partition (\x -> is_car x) all_cars
+    -- List.filter is_car all_cars
 
 getAverage : List Car -> Maybe Float
 getAverage carsList = 
@@ -272,29 +274,16 @@ getAverage carsList =
     in 
     Stat.average (List.map toFloat carsMPG)
 
-getCarsLowerMPG : List Car -> List Car
-getCarsLowerMPG my_cars =
-    let
-        carMPGIsLower : Car -> Bool
-        carMPGIsLower car =
-            if car.cityMPG < getAverage (filterCars cars) then
-                True 
-            else 
-                False
-    in
-    List.filterMap carMPGIsLower (filterCars cars)
 
-getCarsHigherMPG : List Car -> List Car
-getCarsHigherMPG my_cars =
+getCarsSplitLowerHigherMPG : List Car -> (List Car, List Car)
+getCarsSplitLowerHigherMPG my_cars =
     let
-        carMPGIsHigher : Car -> Bool
-        carMPGIsHigher car =
-            if car.cityMPG > getAverage (filterCars cars) then
-                True 
-            else 
-                False
+        average : Float
+        average =  
+            Maybe.withDefault 0 (getAverage my_cars)
     in
-    List.filterMap carMPGIsHigher (filterCars cars)
+
+    List.partition (\x -> toFloat (Maybe.withDefault 0 x.cityMPG) <= average) my_cars
 
 
 main : Html msg
@@ -307,26 +296,47 @@ main =
             String.fromInt <| List.length cars
 
         numberFilterCars =
-            String.fromInt <| List.length filteredCars.data
+            String.fromInt <| List.length filteredModelCars
 
-        averageMPG = 
-            String.fromFloat <|  Maybe.withDefault 0  (getAverage (filterCars cars))
+        filteredModelCars =  
+            Tuple.first <| filterCarsAndCarModel cars
+
+        averageMPGForModel = 
+            Round.round 2 (Maybe.withDefault 0  (getAverage filteredModelCars))
+
+        carsWithLowerMPG =
+            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
+
+        carsWithHigherMPG =
+            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
+
+        
+
+        
     in
     Html.div []
         [ 
-            Html.p []
-                [
-                    text <| "Original Car List: " ++ numberCars  ,
-                    text " , ",
-                    text <| "Reduced Car List: " ++ numberFilterCars
-                ]
-            ,
-            Html.p []
-                [
-                    text <| "Chosen Car Type is: " ++ chosenCarTypeString ++ " and the average MPG is " ++ averageMPG
-                ]
+        Html.p []
+            [
+                text <| "We have " ++ numberCars ++ " original cars in the list: ",
+                text " , ",
+                text <| numberFilterCars ++ " cars are of the type: " ++ chosenCarTypeString
+            ]
+        ,
+        Html.p []
+            [
+                text <| "The average MPG for " ++ chosenCarTypeString ++ "s are " ++ averageMPGForModel ++ "."
+            ],
+        Html.p []
+            [
+                text <| ( String.fromInt (List.length carsWithLowerMPG)) ++ " " ++ chosenCarTypeString ++ "s have a lower MPG then the average."
+            ],
+        Html.p []
+            [
+                text <| ( String.fromInt (List.length carsWithHigherMPG)) ++ " " ++ chosenCarTypeString ++ "s have a higher MPG then the average."
+            ]
                 
-        , scatterplot filteredCars
+        , scatterplot (filterAndReduceCars filteredModelCars)
         ]
 
 

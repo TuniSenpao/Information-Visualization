@@ -1,0 +1,19 @@
+2.1 
+	Farbe -> Svg mit Css koppeln -> style oder color; oder fill and stroke
+	Form -> basic shapes, path oder polyline
+	Größe der Form -> transform
+	Opacity
+	(Schnittmengen, (clipping and masking))
+	Bewegung. mit svg animation
+	Flackern, mit svg animation
+	Orientierung (Rotation)
+	Textur, fill
+
+
+2.2
+	List partition um Liste zu trennen in zwei Listen
+
+	type Cartype =...
+
+	l = [Pickup, SUV, Wagon, Pickup]
+	List.partition (\x -> x == SUV) l   // damit bekommt man alle Autos vom gewünschten Cartype in der ersten Liste des Tupels, den Rest in der zweiten Liste des Tupels
