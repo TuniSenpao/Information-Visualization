@@ -1,4 +1,4 @@
-module Exercise3 exposing (..)
+module Exercise4 exposing (..)
 
 import Axis
 import Html exposing (Html, text)
@@ -129,11 +129,11 @@ scatterplot model =
             , y = wideExtent yValues |> Tuple.second
             }
 
-
         linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
 
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
+
         carsWithLowerMPG =
             Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
 
@@ -155,131 +155,15 @@ scatterplot model =
                 ]
     in
 
-    svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
-        [ 
-            style [] [ TypedSvg.Core.text """
-                .point text { display: none; }
-                .higher .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(196, 77, 86); }
-                .not .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
-                .point:hover text { display: inline; }
-                .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
-                .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
-            """ ]
-            ,
-            g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
-            [ 
-                xAxis xValues 
-                ,
-                text_ [x (Scale.convert linearScaleX labelPositions.x), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text "cityMPG"]
-                
-            ]
-            ,
-            g [class ["yaxis"], transform [ Translate (padding) (padding)]]
-            [ 
-                yAxis yValues 
-                ,
-                text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text "Retail Price"]
-            ]
+{- 
+Stellen sie die drei o.g. Teilmengen in einem Scatterplot mit den Achsen dealerCost und carLen dar. 
+Wie in Aufgabe 2.3 soll die dritte Teilmenge, die Autos in der gewählten Klasse oberhalb des durchschnittlichen Verbrauchs in Miles per Gallon, 
+soll so dargestellt werden, dass sie beim Betrachten sofort ins Auge fällt.
 
-            , g [ transform [ Translate padding padding ], class ["not"] ]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsNotOfChosenType))
-            
-            , g [ transform [ Translate padding padding ], class ["higher"] ]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithHigherMPG))
-            , g [ transform [ Translate padding padding ], class ["not"] ]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithLowerMPG))
-        ]
-scatterplot1 : XyData -> Svg msg
-scatterplot1 model =
-    let
-        xValues : List Float
-        xValues =
-            List.map .x model.data  
-
-        yValues : List Float
-        yValues =
-            List.map .y model.data
-
-        wideExtent : List Float -> ( Float, Float )
-        wideExtent values =
-        
-            case (Statistics.extent values) of
-                Just (a , b) ->
-                    let
-                        data_width = b - a
-                        heuristic = data_width / toFloat (2 * tickCount)
-                    in
-                    if a - heuristic > 0 then
-                        (a - heuristic, b + heuristic )
-                    else
-                        (0,  b + heuristic)
-                _ ->
-                    defaultExtent
-
-        xScale : List Float -> ContinuousScale Float
-        xScale values =
-            Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
-
-
-        yScale : List Float -> ContinuousScale Float
-        yScale values =
-            Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
-
-        xScaleLocal : ContinuousScale Float
-        xScaleLocal =
-            xScale xValues
-
-        yScaleLocal : ContinuousScale Float
-        yScaleLocal =
-            yScale yValues
-
-        xAxis : List Float -> Svg msg
-        xAxis values =
-            Axis.bottom [ Axis.tickCount tickCount ] (xScale values)
-
-
-        yAxis : List Float -> Svg msg
-        yAxis values =
-            Axis.left [ Axis.tickCount tickCount ] (yScale values)
-            
-        half : ( Float, Float ) -> Float
-        half t =
-            (Tuple.second t - Tuple.first t) / 2
-
-        labelPositions : { x : Float, y : Float }
-        labelPositions =
-            { x = wideExtent xValues |> half
-            , y = wideExtent yValues |> Tuple.second
-            }
-
-
-        linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
-
-        filteredModelCars =  
-            Tuple.first <| filterCarsAndCarModel cars
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsNotOfChosenType =
-            Tuple.second <| filterCarsAndCarModel cars
-
-
-        point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        point scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    circle [ cx 0, cy 0, r (radius) ] [] 
-                ]
-    in
-
+Entwerfen und implementieren Sie in Elm zwei weitere Versionen der Scatterplot-Darstellung, die unterschiedliche visuellen Eigenschaften nutzen, 
+um die drei Teilmengen von einander zu unterscheiden. Diese Versionen sollen sich von denen aus Aufgabe 2.3 unterscheiden. 
+Diesmal können Sie nicht wie in Aufgabe 2.3 die Entscheidungsgrenze direkt visualisieren.
+-}
     svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
         [ 
             style [] [ TypedSvg.Core.text """
@@ -297,9 +181,8 @@ scatterplot1 model =
             [ 
                 xAxis xValues 
                 ,
-                text_ [x (Scale.convert linearScaleX labelPositions.x), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text "cityMPG"]
-                
+                text_ [x ((w-3*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+                    [ text "Car Length" ]
             ]
             ,
             g [class ["yaxis"], transform [ Translate (padding) (padding)]]
@@ -307,314 +190,17 @@ scatterplot1 model =
                 yAxis yValues 
                 ,
                 text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text "Retail Price"]
+                [ text ("Dealer Cost")]
             ]
-
-            , g [ transform [ Translate padding padding ], class ["not"] ]
+            , 
+            g [ transform [ Translate padding padding ], class ["not"] ]
                 (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsNotOfChosenType))
-            
-            , g [ transform [ Translate padding padding ], class ["higher"] ]
+            , 
+            g [ transform [ Translate padding padding ], class ["higher"] ]
                 (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithHigherMPG))
-            , g [ transform [ Translate padding padding ], class ["lower"] ]
+            , 
+            g [ transform [ Translate padding padding ], class ["lower"] ]
                 (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithLowerMPG))
-        ]
-scatterplot2 : XyData -> Svg msg
-scatterplot2 model =
-    let
-        xValues : List Float
-        xValues =
-            List.map .x model.data  
-
-        yValues : List Float
-        yValues =
-            List.map .y model.data
-
-        wideExtent : List Float -> ( Float, Float )
-        wideExtent values =
-        
-            case (Statistics.extent values) of
-                Just (a , b) ->
-                    let
-                        data_width = b - a
-                        heuristic = data_width / toFloat (2 * tickCount)
-                    in
-                    if a - heuristic > 0 then
-                        (a - heuristic, b + heuristic )
-                    else
-                        (0,  b + heuristic)
-                _ ->
-                    defaultExtent
-
-        xScale : List Float -> ContinuousScale Float
-        xScale values =
-            Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
-
-
-        yScale : List Float -> ContinuousScale Float
-        yScale values =
-            Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
-
-        xScaleLocal : ContinuousScale Float
-        xScaleLocal =
-            xScale xValues
-
-        yScaleLocal : ContinuousScale Float
-        yScaleLocal =
-            yScale yValues
-
-        xAxis : List Float -> Svg msg
-        xAxis values =
-            Axis.bottom [ Axis.tickCount tickCount ] (xScale values)
-
-
-        yAxis : List Float -> Svg msg
-        yAxis values =
-            Axis.left [ Axis.tickCount tickCount ] (yScale values)
-            
-        half : ( Float, Float ) -> Float
-        half t =
-            (Tuple.second t - Tuple.first t) / 2
-
-        labelPositions : { x : Float, y : Float }
-        labelPositions =
-            { x = wideExtent xValues |> half
-            , y = wideExtent yValues |> Tuple.second
-            }
-
-
-        linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
-
-        filteredModelCars =  
-            Tuple.first <| filterCarsAndCarModel cars
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsNotOfChosenType =
-            Tuple.second <| filterCarsAndCarModel cars
-
-
-        point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        point scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    circle [ cx 0, cy 0, r (radius) ] [] 
-                ]
-
-        square : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        square scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    rect [x -5, y -5, width 10, height 10 ] [] 
-                ]
-
-        triangle : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        triangle scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    polygon [ points [ ( 0, -5 ), ( -5, 5 ), ( 5, 5 )] ] []
-                ]
-    in
-
-    svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
-        [ 
-            style [] [ TypedSvg.Core.text """
-                .point { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
-                .point text { display: none; }
-                .point:hover { stroke: rgba(0, 0, 0,1.0); fill: rgb(118, 214, 78); }
-                .point:hover text { display: inline; }
-
-            """ ]
-            ,
-            g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
-            [ 
-                xAxis xValues 
-                ,
-                text_ [x (Scale.convert linearScaleX labelPositions.x), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text "cityMPG"]
-                
-            ]
-            ,
-            g [class ["yaxis"], transform [ Translate (padding) (padding)]]
-            [ 
-                yAxis yValues 
-                ,
-                text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text "Retail Price"]
-            ]
-
-            , g [ transform [ Translate padding padding ]]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsNotOfChosenType))
-            
-            , g [ transform [ Translate padding padding ]]
-                (List.map (square xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithHigherMPG))
-            , g [ transform [ Translate padding padding ]]
-                (List.map (triangle xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithLowerMPG))
-        ]
-scatterplot3 : XyData -> Svg msg
-scatterplot3 model =
-    let
-        xValues : List Float
-        xValues =
-            List.map .x model.data  
-
-        yValues : List Float
-        yValues =
-            List.map .y model.data
-
-        wideExtent : List Float -> ( Float, Float )
-        wideExtent values =
-        
-            case (Statistics.extent values) of
-                Just (a , b) ->
-                    let
-                        data_width = b - a
-                        heuristic = data_width / toFloat (2 * tickCount)
-                    in
-                    if a - heuristic > 0 then
-                        (a - heuristic, b + heuristic )
-                    else
-                        (0,  b + heuristic)
-                _ ->
-                    defaultExtent
-
-        xScale : List Float -> ContinuousScale Float
-        xScale values =
-            Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
-
-
-        yScale : List Float -> ContinuousScale Float
-        yScale values =
-            Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
-
-        xScaleLocal : ContinuousScale Float
-        xScaleLocal =
-            xScale xValues
-
-        yScaleLocal : ContinuousScale Float
-        yScaleLocal =
-            yScale yValues
-
-        xAxis : List Float -> Svg msg
-        xAxis values =
-            Axis.bottom [ Axis.tickCount tickCount ] (xScale values)
-
-
-        yAxis : List Float -> Svg msg
-        yAxis values =
-            Axis.left [ Axis.tickCount tickCount ] (yScale values)
-            
-        half : ( Float, Float ) -> Float
-        half t =
-            (Tuple.second t - Tuple.first t) / 2
-
-        labelPositions : { x : Float, y : Float }
-        labelPositions =
-            { x = wideExtent xValues |> half
-            , y = wideExtent yValues |> Tuple.second
-            }
-
-
-        linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
-
-        filteredModelCars =  
-            Tuple.first <| filterCarsAndCarModel cars
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsNotOfChosenType =
-            Tuple.second <| filterCarsAndCarModel cars
-
-
-        rightArrow : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        rightArrow scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    line [ x1 -5, y1 0, x2 5, y2 0, strokeWidth 1.5] [],
-                    polygon [ points [ ( 2.5,-2.5 ), ( 2.5, 2.5 ), ( 5, 0 )]] []
-
-                ]
-
-        leftArrow : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        leftArrow scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    line [ x1 -5, y1 0, x2 5, y2 0, strokeWidth 1.5] [],
-                    polygon [ points [ ( -2.5,-2.5 ), ( -2.5, 2.5 ), ( -5, 0 )] ] []
-
-                ]
-
-        upArrow : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
-        upArrow scaleX scaleY xyPoint =
-            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
-                [ 
-                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
-
-                    line [ x1 0, y1 -5, x2 0, y2 5, strokeWidth 1.5] [],
-                    polygon [ points [ ( -2.5,-2.5 ), ( 2.5, -2.5 ), ( 0, -5 )] ] []
-
-                ]
-
-    in
-
-    svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
-        [ 
-            style [] [ TypedSvg.Core.text """
-                .point text { display: none; }
-                .higher .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(196, 77, 86); }
-                .lower .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(147, 250, 165); }
-                .not .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
-                .point:hover text { display: inline; }
-                .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
-                .lower circle { stroke: rgba(147, 250, 165,0.5); fill: rgba(147, 250, 165,0.5); }
-                .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
-            """ ]
-            ,
-            g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
-            [ 
-                xAxis xValues 
-                ,
-                text_ [x (Scale.convert linearScaleX labelPositions.x), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text "cityMPG"]
-                
-            ]
-            ,
-            g [class ["yaxis"], transform [ Translate (padding) (padding)]]
-            [ 
-                yAxis yValues 
-                ,
-                text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text "Retail Price"]
-            ]
-
-            , g [ transform [ Translate padding padding ], class ["not"] ]
-                (List.map (upArrow xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsNotOfChosenType))
-            
-            , g [ transform [ Translate padding padding ], class ["higher"] ]
-                (List.map (rightArrow xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithHigherMPG))
-            , g [ transform [ Translate padding padding ], class ["not"] ]
-                (List.map (leftArrow xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithLowerMPG))
         ]
 
 
@@ -628,7 +214,7 @@ type alias XyData =
     , data : List Point
     }
 
-    
+
 car_to_point : Car -> Maybe Point
 car_to_point car = 
     let
@@ -638,8 +224,8 @@ car_to_point car =
         case (car.cityMPG , car.retailPrice) of
             (Just cityMPG, Just retailPrice) ->
                 case (car.carLen, car.dealerCost) of 
-                    (Just carLen, dealerCost) ->
-                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName) (toFloat cityMPG) (toFloat retailPrice)) 
+                    (Just carLen, Just dealerCost) ->
+                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName) (toFloat carLen) (toFloat dealerCost)) 
                     _ -> 
                         Nothing   
             _ ->
@@ -769,33 +355,9 @@ main =
                 text <| ( String.fromInt (List.length carsWithHigherMPG)) ++ " " ++ chosenCarTypeString ++ "s have a higher MPG then the average."
             ]
         ,
-        Html.p []
-            [
-                text <| "0.: Hervorheben der Autos mit überdurchschnittlicher cityMPG, welche zur Gruppe von " ++ chosenCarTypeString ++ " gehört." 
-            ]
-        ,
+        
+
         scatterplot xyDataCars
-        ,
-        Html.p []
-            [
-                text <| "1.: Erste Version des Scatterplots. Nutzen verschiedener Farben." 
-            ]
-        ,
-        scatterplot1 xyDataCars
-        ,
-        Html.p []
-            [
-                text <| "2.: Zweite Version des Scatterplots. Nutzen verschiedener Formen." 
-            ]
-        ,
-        scatterplot2 xyDataCars
-        ,
-        Html.p []
-            [
-                text <| "3.: Dritte Version des Scatterplots. Nutzen verschiedener Orientierungen." 
-            ]
-        ,
-        scatterplot3 xyDataCars
         ]
 
 

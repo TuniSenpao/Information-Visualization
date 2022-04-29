@@ -184,17 +184,6 @@ type alias XyData =
     , data : List Point
     }
  
-carHasNothingValue : Car -> Maybe Car
-carHasNothingValue car =
-    if car.retailPrice == Nothing then
-        Nothing
-
-    else if car.cityMPG == Nothing then
-        Nothing
-    
-    else
-        Just car
-
 
 filterAndReduceCars : List Car -> XyData
 filterAndReduceCars my_cars = 
