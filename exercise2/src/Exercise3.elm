@@ -685,7 +685,6 @@ filterCarsAndCarModel all_cars =
     in 
 
     List.partition (\x -> is_car x) all_cars
-    -- List.filter is_car all_cars
 
 getAverage : List Car -> Maybe Float
 getAverage carsList = 
@@ -751,25 +750,9 @@ main =
             Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
 
         carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        
-{-
-1. Stellen sie alle drei o.g. Teilmengen in einem gemeinsamen Scatterplot mit den Achsen cityMPG und retailPrice dar. 
-
-2. Die dritte Teilmenge, die Autos in der gewählten Klasse oberhalb des durchschnittlichen Verbrauchs in Miles per Gallon, soll so dargestellt werden, 
-dass sie beim Betrachten sofort ins Auge fällt.
-
-3. Entwerfen und implementieren Sie in Elm drei Versionen der Scatterplot-Darstellung, die unterschiedliche visuellen Eigenschaften nutzen, 
-um die drei Teilmengen von einander zu unterscheiden. Sie können diese drei Versionen untereinander darstellen, so dass man zu jeder Darstellung scrollen kann. 
-Sie können alternativ mit Interaktion zwischen den drei Darstellungen umschalten. Dazu müssten Sie die gesamte Elm-Architektur mit Model und Update nutzen, 
-anstatt nur einen View zu verwenden.
-
-Hinweis: weil cityMPG in dieser Aufgabe auch eine Achse im Scatterplot ist, könnten sie die Entscheidungsgrenze, 
-den durchschnittlichen Verbrauch in der gewählten Autoklasse, direkt visualisieren.
--}
-        
+            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)        
     in
+    
     Html.div []
         [ 
         Html.p []
