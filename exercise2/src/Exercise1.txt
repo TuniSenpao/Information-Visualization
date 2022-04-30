@@ -1,0 +1,13 @@
+Aufgabe 2.1
+Schreiben Sie eine Liste mit visuellen Eigenschaften auf, die in dem o.g. Kapitel als geeignet für Preattentive Perceptual Processing identifiziert wurden. 
+Verlinken sie wenn möglich zu jeder visuellen Eigenschaft eine oder mehrere SVG-Techniken, mit denen man die Visualisierung umsetzen könnte
+
+
+
+Farbton (Hue) -> fill und stroke Attribute Formen oder color Attribut-> https://developer.mozilla.org/de/docs/Web/SVG/Tutorial/Fills_and_Strokes und https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/color
+Form -> basic shapes, path oder polyline  -> https://developer.mozilla.org/en-US/docs/Web/SVG/Tutorial/Basic_Shapes und 
+Größe -> Direkt über die Form oder über Transform (Scale) https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+Opacity -> Über opacity-Attribut https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/opacity
+Bewegung & Flimmern -> Mit Animationen https://developer.mozilla.org/de/docs/Web/SVG/Element/animate
+Orientierung (Rotation) -> Transform(Rotate) https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+Textur -> Muster innerhalb von Objekten durch Patterns https://developer.mozilla.org/en-US/docs/Web/SVG/Element/pattern
