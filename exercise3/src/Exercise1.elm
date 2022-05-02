@@ -27,6 +27,19 @@ Hinweise
         Bei der Berechnung starten sie am besten mit der Liste der Datenwerte. Mit den Elm-Funkionen List.sort, 
         List.indexedMap und List.length können sie gesuchte Liste von Punkten bestimmen.
     - Nutzen sie die Scatterplot-Funktionen aus Übung 1 und 2 um die berechnete Liste von Punkten darzustellen.
+
+    TODO:
+        - Achsenbeschriftung ändern
+        - Berechnung der Punkte ändern -> Point mit x = f-Value und y = data-Value
+
+        Liste von Autos nach cityMPG sortieren mit List.sort
+        i bekommt man indem man List.indexedMap benutzt statt List.map
+
+
+
+Tafel:
+_> Statistics.quantile -> nimmt Float (Qunatil), eine Liste von sortierten Zahlen (die Werte von cityMPG) und gibt den 
+
 -}
 
 chosenCarType : CarType
@@ -186,7 +199,7 @@ scatterplot model =
                 xAxis xValues 
                 ,
                 text_ [x ((w-3*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text "Car Length" ]
+                    [ text "f-Values cityMPG" ]
             ]
             ,
             g [class ["yaxis"], transform [ Translate (padding) (padding)]]
@@ -194,7 +207,7 @@ scatterplot model =
                 yAxis yValues 
                 ,
                 text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text ("Dealer Cost")]
+                [ text ("quantiles cityMPG")]
             ]
             , 
             g [ transform [ Translate padding padding ], class ["not"] ]
@@ -224,12 +237,13 @@ car_to_point car =
     let
         beschriftung : Int -> Int -> String -> String
         beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
+
     in
         case (car.cityMPG , car.retailPrice) of
             (Just cityMPG, Just retailPrice) ->
                 case (car.carLen, car.dealerCost) of 
                     (Just carLen, Just dealerCost) ->
-                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName) (toFloat carLen) (toFloat dealerCost)) 
+                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName)(toFloat cityMPG) (toFloat retailPrice)) 
                     _ -> 
                         Nothing   
             _ ->
@@ -238,12 +252,59 @@ car_to_point car =
 
 carsToXyData : List Car -> XyData
 carsToXyData my_cars = 
-    let         
-        filtered_cars : List Point
-        filtered_cars = List.filterMap car_to_point my_cars
+    let       
+
+        car_has_values : Car -> Bool
+        car_has_values car =
+            case (car.cityMPG , car.retailPrice) of
+                    (Just cityMPG, Just retailPrice) ->
+                        case (car.carLen, car.dealerCost) of 
+                            (Just carLen, Just dealerCost) ->
+                                True 
+                            _ -> 
+                                False  
+                    _ ->
+                        False
+
+        filtered_cars : List Car
+        filtered_cars =
+            List.filter car_has_values my_cars
+
+        list_length = List.length my_cars
+
+        -- cityMPG Werte rauslösen, in Liste schreiben und sortieren
+        city_mpg_values : List Float
+        city_mpg_values = List.map (\x -> toFloat x) (List.sort (List.map (\car -> car.cityMPG) filtered_cars))
+
+        -- List.indexedMap für f-Wert Berechnung
+        city_mpg_f_values : List Float
+        city_mpg_f_values = List.indexedMap (\index value -> (index - 0.5)/list_length) city_mpg_values
+
+        filtered_car_points : List Point
+
+
+
+        filtered_car_points = car_to_city_mpg_point (city_mpg_f_values, city_mpg_values)
     in
 
-    XyData "cityMPG" "retailPrice" filtered_cars
+    XyData "f-Value cityMPG" "quantile cityMPG" filtered_car_points
+
+
+
+car_to_city_mpg_point : (List Float -> List Float) -> Point
+car_to_city_mpg_point tuple =
+    let 
+        cityMPG_fValues : List Float
+        cityMPG_fValues = Tuple.first tuple
+
+        cityMPG_values : List Int
+        cityMPG_values = tuple.second tuple
+
+        beschriftung : String
+        beschriftung = "(" ++ (String.fromInt cityMPG_fValues) ++ ", " ++ (String.fromInt cityMPG_values) ++ ")"
+    in
+    Point beschriftung cityMPG_fValues cityMPG_values
+
 
 filterCarsAndCarModel : List Car -> ( List Car, List Car)
 filterCarsAndCarModel all_cars = 
@@ -297,7 +358,7 @@ main : Html msg
 main =
     let
         xyDataCars =
-            carsToXyData cars
+            carsToXyData filteredModelCars
 
         numberCars =
             let
