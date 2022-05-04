@@ -233,7 +233,6 @@ filterCarsAndCarModel all_cars =
     in 
 
     List.partition (\x -> is_car x) all_cars
-    -- List.filter is_car all_cars
 
 getAverage : List Car -> Maybe Float
 getAverage carsList = 
