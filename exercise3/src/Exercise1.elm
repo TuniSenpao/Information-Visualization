@@ -1,136 +1,40 @@
 module Exercise1 exposing (..)
 
 import Axis
-import Browser
-import Color
-import Html exposing (Html, ol)
-import Html.Attributes
-import Html.Events
+import Html exposing (Html, text)
 import Scale exposing (ContinuousScale)
 import Statistics
-import TypedSvg exposing (circle, g, rect, style, svg, text_)
-import TypedSvg.Attributes exposing (class, color, fontFamily, fontSize, textAnchor, transform, viewBox)
-import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y)
+import TypedSvg exposing (circle, g, rect, style, svg, text_, polyline, polygon, line)
+import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, transform, viewBox, points)
+import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y, x1, x2, y1, y2, strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Events
-import TypedSvg.Types exposing (AnchorAlignment(..), Length(..), Transform(..))
+import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
+import TypedSvg.Attributes exposing (orientation)
+import Stat
+import Round
+import TypedSvg exposing (polygon)
 
 
-type CarType
-    = Small_Sporty_Compact_Large_Sedan
-    | Sports_Car
-    | SUV
-    | Wagon
-    | Minivan
-    | Pickup
 
+chosenCarType : CarType
+chosenCarType = 
+    SUV
 
-type PlotType
-    = PlotColor
-    | PlotBrightness
-    | PlotShape
-
-
-type alias Model =
-    { carType : CarType
-    , plotType : PlotType
-    , hoveredElement : Maybe (Svg Msg)
-    , error : String
-    }
-
-
-type Msg
-    = ChooseClass String
-    | ChoosePlot String
-    | ShowText (Svg Msg)
-    | DisableText
-    | Error String
-
-
-type alias IsCar =
-    { vehicleName : String
-    , carType : CarType
-    , retailPrice : Int
-    , dealerCost : Int
-    , cityMPG : Int
-    , carLen : Int
-    }
-
-
-initialModel : Model
-initialModel =
-    { carType = Small_Sporty_Compact_Large_Sedan, plotType = PlotColor, hoveredElement = Nothing, error = "" }
-
-
-stringToCarType : String -> Maybe CarType
-stringToCarType t =
-    case t of
-        "Small Sporty Compact Large Sedan" ->
-            Just Small_Sporty_Compact_Large_Sedan
-
-        "Sports Car" ->
-            Just Sports_Car
-
-        "SUV" ->
-            Just SUV
-
-        "Wagon" ->
-            Just Wagon
-
-        "Minivan" ->
-            Just Minivan
-
-        "Pickup" ->
-            Just Pickup
-
-        _ ->
-            Nothing
-
-
-stringToPlotType : String -> Maybe PlotType
-stringToPlotType t =
-    case t of
-        "Colors" ->
-            Just PlotColor
-
-        "Brightness" ->
-            Just PlotBrightness
-
-        "Shape" ->
-            Just PlotShape
-
-        _ ->
-            Nothing
-
-
-update : Msg -> Model -> Model
-update msg model =
-    case msg of
-        ChooseClass class ->
-            case stringToCarType class of
-                Just carType ->
-                    { model | carType = carType, error = "" }
-
-                Nothing ->
-                    update (Error "Error: Class not found") model
-
-        ChoosePlot plot ->
-            case stringToPlotType plot of
-                Just plotType ->
-                    { model | plotType = plotType, error = "" }
-
-                Nothing ->
-                    update (Error "Error: Plot not found") model
-
-        ShowText svgText ->
-            { model | hoveredElement = Just svgText, error = "" }
-
-        DisableText ->
-            { model | hoveredElement = Nothing, error = "" }
-
-        Error error ->
-            { model | error = error }
-
+chosenCarTypeString : String
+chosenCarTypeString =
+    case chosenCarType of
+        SUV ->
+            "SUV"
+        Small_Sporty_Compact_Large_Sedan ->
+            "Small_Sporty_Compact_Large_Sedan"
+        Sports_Car ->
+            "Sports_Car"
+        Wagon ->
+            "Wagon"
+        Minivan ->
+            "Minivan"
+        Pickup ->
+            "Pickup"
 
 w : Float
 w =
@@ -147,269 +51,56 @@ padding =
     60
 
 
+radius : Float
+radius =
+    5.0
+
+
 tickCount : Int
 tickCount =
     5
 
 
-wideExtent : List Float -> ( Float, Float )
-wideExtent values =
-    case Statistics.extent values of
-        Just ( left, right ) ->
-            let
-                extra =
-                    right / (2.0 * toFloat tickCount)
-
-                min =
-                    if left - extra < 0 then
-                        0
-
-                    else
-                        left - extra
-
-                max =
-                    right + extra
-            in
-            ( min, max )
-
-        Nothing ->
-            ( 0, 0 )
+defaultExtent : ( number, number1 )
+defaultExtent =
+    ( 0, 100 )
 
 
-xScale : List Float -> ContinuousScale Float
-xScale values =
-    Scale.linear ( 0, w - 2 * padding ) (wideExtent values)
-
-
-yScale : List Float -> ContinuousScale Float
-yScale values =
-    Scale.linear ( h - 2 * padding, 0 ) (wideExtent values)
-
-
-xAxis : List Float -> Svg Msg
-xAxis values =
-    Axis.bottom [ Axis.tickCount tickCount ] (xScale values)
-
-
-yAxis : List Float -> Svg Msg
-yAxis values =
-    Axis.left [ Axis.tickCount tickCount ] (yScale values)
-
-
-textSpawnEvent : String -> Float -> Float -> Svg Msg
-textSpawnEvent name xPos yPos =
-    text_
-        [ x xPos
-        , y yPos
-        , textAnchor AnchorMiddle
-        ]
-        [ TypedSvg.Core.text name ]
-
-
-getTrianglePointsFromCircle : Float -> Float -> Float -> List ( Float, Float )
-getTrianglePointsFromCircle xPoint yPoint radius =
+scatterplot : XyData -> Svg msg
+scatterplot model =
     let
-        adjustetRadius =
-            radius * 2
-
-        yPadding =
-            yPoint + adjustetRadius * (sqrt 3 / 6)
-
-        xBottomLeft =
-            xPoint - (adjustetRadius / 2)
-
-        xBottomRight =
-            xPoint + (adjustetRadius / 2)
-
-        yTop =
-            yPadding - adjustetRadius * (sqrt 3 / 2)
-    in
-    [ ( xBottomLeft, yPadding ), ( xBottomRight, yPadding ), ( xPoint, yTop ) ]
-
-
-pointCircle : ContinuousScale Float -> ContinuousScale Float -> List (TypedSvg.Core.Attribute Msg) -> Point -> Svg Msg
-pointCircle scaleX scaleY circleAttributes xyPoint =
-    g [ class [ "point" ] ]
-        [ circle
-            ([ cx (Scale.convert scaleX xyPoint.x)
-             , cy (Scale.convert scaleY xyPoint.y)
-             , TypedSvg.Attributes.r (TypedSvg.Types.px 5)
-             , TypedSvg.Events.onMouseOver
-                (ShowText (textSpawnEvent xyPoint.pointName (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y - 10)))
-             , TypedSvg.Events.onMouseLeave DisableText
-             ]
-                ++ circleAttributes
-            )
-            []
-        ]
-
-
-pointTriangle : ContinuousScale Float -> ContinuousScale Float -> List (TypedSvg.Core.Attribute Msg) -> Point -> Svg Msg
-pointTriangle scaleX scaleY triangleAttributes xyPoint =
-    g [ class [ "point" ] ]
-        [ TypedSvg.polygon
-            ([ TypedSvg.Attributes.points (getTrianglePointsFromCircle (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y) 5)
-             , TypedSvg.Events.onMouseOver
-                (ShowText (textSpawnEvent xyPoint.pointName (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y - 10)))
-             , TypedSvg.Events.onMouseLeave DisableText
-             ]
-                ++ triangleAttributes
-            )
-            []
-        ]
-
-
-pointSquare : ContinuousScale Float -> ContinuousScale Float -> List (TypedSvg.Core.Attribute Msg) -> Point -> Svg Msg
-pointSquare scaleX scaleY squareAttributes xyPoint =
-    g [ class [ "point" ] ]
-        [ rect
-            ([ x (Scale.convert scaleX xyPoint.x - 5)
-             , y (Scale.convert scaleY xyPoint.y - 5)
-             , width 10
-             , height 10
-             , TypedSvg.Events.onMouseOver
-                (ShowText (textSpawnEvent xyPoint.pointName (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y - 10)))
-             , TypedSvg.Events.onMouseLeave DisableText
-             ]
-                ++ squareAttributes
-            )
-            []
-        ]
-
-
-colorPlot : XyData -> ContinuousScale Float -> ContinuousScale Float -> Svg Msg
-colorPlot data xScaleLocal yScaleLocal =
-    g []
-        [ -- not in class
-          g
-            [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 255 255))
-                    , TypedSvg.Attributes.stroke (TypedSvg.Types.Paint (Color.rgb255 0 0 0))
-                    ]
-                )
-                data.dataNotClass
-            )
-
-        -- <= average
-        , g [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 255 0)) ]
-                )
-                data.dataUnderAverage
-            )
-
-        -- > average
-        , g [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 0 0)) ]
-                )
-                data.dataOverAverage
-            )
-        ]
-
-
-brightnessPlot : XyData -> ContinuousScale Float -> ContinuousScale Float -> Svg Msg
-brightnessPlot data xScaleLocal yScaleLocal =
-    g []
-        [ -- not in class
-          g
-            [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 255 255))
-                    , TypedSvg.Attributes.stroke (TypedSvg.Types.Paint (Color.rgb255 0 0 0))
-                    ]
-                )
-                data.dataNotClass
-            )
-
-        -- <= average
-        , g [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 0 0)) ]
-                )
-                data.dataUnderAverage
-            )
-
-        -- > average
-        , g [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 0 0))
-                    , TypedSvg.Attributes.style "filter: brightness(0.5)"
-                    ]
-                )
-                data.dataOverAverage
-            )
-        ]
-
-
-shapePlot : XyData -> ContinuousScale Float -> ContinuousScale Float -> Svg Msg
-shapePlot data xScaleLocal yScaleLocal =
-    g []
-        [ -- not in class
-          g
-            [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointCircle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 255 255))
-                    , TypedSvg.Attributes.stroke (TypedSvg.Types.Paint (Color.rgb255 0 0 0))
-                    ]
-                )
-                data.dataNotClass
-            )
-
-        -- <= average
-        , g [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointTriangle xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 255 255))
-                    , TypedSvg.Attributes.stroke (TypedSvg.Types.Paint (Color.rgb255 0 0 0))
-                    ]
-                )
-                data.dataUnderAverage
-            )
-
-        -- > average
-        , g [ transform [ Translate padding padding ] ]
-            (List.map
-                (pointSquare xScaleLocal
-                    yScaleLocal
-                    [ TypedSvg.Attributes.fill (TypedSvg.Types.Paint (Color.rgb255 255 255 255))
-                    , TypedSvg.Attributes.stroke (TypedSvg.Types.Paint (Color.rgb255 0 0 0))
-                    ]
-                )
-                data.dataOverAverage
-            )
-        ]
-
-
-scatterplot : Model -> XyData -> PlotType -> Svg Msg
-scatterplot model xyData plotType =
-    let
-        data =
-            xyData.dataNotClass ++ xyData.dataUnderAverage ++ xyData.dataOverAverage
-
         xValues : List Float
         xValues =
-            List.map .x data
+            List.map .x model.data  
 
         yValues : List Float
         yValues =
-            List.map .y data
+            List.map .y model.data
+
+        wideExtent : List Float -> ( Float, Float )
+        wideExtent values =
+        
+            case (Statistics.extent values) of
+                Just (a , b) ->
+                    let
+                        data_width = b - a
+                        heuristic = data_width / toFloat (2 * tickCount)
+                    in
+                    if a - heuristic > 0 then
+                        (a - heuristic, b + heuristic )
+                    else
+                        (0,  b + heuristic)
+                _ ->
+                    defaultExtent
+
+        xScale : List Float -> ContinuousScale Float
+        xScale values =
+            Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
+
+
+        yScale : List Float -> ContinuousScale Float
+        yScale values =
+            Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
 
         xScaleLocal : ContinuousScale Float
         xScaleLocal =
@@ -419,6 +110,15 @@ scatterplot model xyData plotType =
         yScaleLocal =
             yScale yValues
 
+        xAxis : List Float -> Svg msg
+        xAxis values =
+            Axis.bottom [ Axis.tickCount tickCount ] (xScale values)
+
+
+        yAxis : List Float -> Svg msg
+        yAxis values =
+            Axis.left [ Axis.tickCount tickCount ] (yScale values)
+            
         half : ( Float, Float ) -> Float
         half t =
             (Tuple.second t - Tuple.first t) / 2
@@ -428,53 +128,65 @@ scatterplot model xyData plotType =
             { x = wideExtent xValues |> half
             , y = wideExtent yValues |> Tuple.second
             }
+
+        linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
+
+        filteredModelCars =  
+            Tuple.first <| filterCarsAndCarModel cars
+
+        carsWithLowerMPG =
+            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
+
+        carsWithHigherMPG =
+            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
+
+        carsNotOfChosenType =
+            Tuple.second <| filterCarsAndCarModel cars
+
+
+        point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
+        point scaleX scaleY xyPoint =
+            g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
+                [ 
+                    text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+                    [ text xyPoint.pointName],
+
+                    circle [ cx 0, cy 0, r (radius) ] [] 
+                ]
     in
+
     svg [ viewBox 0 0 w h, TypedSvg.Attributes.width <| TypedSvg.Types.Percent 100, TypedSvg.Attributes.height <| TypedSvg.Types.Percent 100 ]
-        [ style [] [ TypedSvg.Core.text """
-            .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(0,0,0); }
-            .point:hover polygon { stroke: rgba(0, 0, 0,1.0); fill: rgb(0,0,0); }
-            .point:hover rect { stroke: rgba(0, 0, 0,1.0); fill: rgb(0,0,0); }
-          """ ]
-        , g
-            [ transform [ Translate (padding - 1) (padding - 1) ]
-            , class [ "axis" ]
-            , fontSize <| Px 10.0
-            , fontFamily [ "sans-serif" ]
+        [ 
+            style [] [ TypedSvg.Core.text """
+                .point text { display: none; }
+                .higher .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(196, 77, 86); }
+                .lower .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(147, 250, 165); }
+                .not .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
+                .point:hover text { display: inline; }
+                .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
+                .lower circle { stroke: rgba(147, 250, 165,0.5); fill: rgba(147, 250, 165,0.5); }
+                .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
+            """ ]
+            ,
+            g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
+            [ 
+                xAxis xValues 
+                ,
+                text_ [x ((w-3*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+                    [ text model.xDescription ]
             ]
-            [ yAxis yValues
-            , text_ [ textAnchor AnchorMiddle, y (Scale.convert yScaleLocal labelPositions.y - 15), x 0 ] [ TypedSvg.Core.text "Retail Price" ]
+            ,
+            g [class ["yaxis"], transform [ Translate (padding) (padding)]]
+            [ 
+                yAxis yValues 
+                ,
+                text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
+                [ text model.yDescription]
             ]
-        , g
-            [ transform [ Translate (padding - 1) (padding - 1 + Tuple.first (Scale.range yScaleLocal)) ]
-            , class [ "axis" ]
-            , fontSize <| Px 10.0
-            , fontFamily [ "sans-serif" ]
-            ]
-            [ xAxis xValues
-            , text_ [ textAnchor AnchorMiddle, y 30, x (Scale.convert xScaleLocal labelPositions.x - 10) ] [ TypedSvg.Core.text "cityMPG" ]
-            ]
-        , case plotType of
-            PlotColor ->
-                colorPlot xyData xScaleLocal yScaleLocal
-
-            PlotBrightness ->
-                brightnessPlot xyData xScaleLocal yScaleLocal
-
-            PlotShape ->
-                shapePlot xyData xScaleLocal yScaleLocal
-        , case model.hoveredElement of
-            Just text ->
-                g
-                    [ transform [ Translate padding padding ]
-                    , fontSize <| Px 10.0
-                    , fontFamily [ "sans-serif" ]
-                    ]
-                    [ text ]
-
-            Nothing ->
-                g [] []
+            , 
+            g [ transform [ Translate padding padding ], class ["not"] ]
+                (List.map (point xScaleLocal yScaleLocal) model.data)
         ]
-
 
 type alias Point =
     { pointName : String, x : Float, y : Float }
@@ -483,214 +195,194 @@ type alias Point =
 type alias XyData =
     { xDescription : String
     , yDescription : String
-    , dataNotClass : List Point
-    , dataUnderAverage : List Point
-    , dataOverAverage : List Point
+    , data : List Point
     }
 
 
-checkCar : Car -> Bool
-checkCar car =
-    case ( car.retailPrice, car.dealerCost ) of
-        ( Just _, Just _ ) ->
-            case ( car.cityMPG, car.carLen ) of
-                ( Just _, Just _ ) ->
-                    True
+car_to_point : Car -> Maybe Point
+car_to_point car = 
+    let
+        beschriftung : Int -> Int -> String -> String
+        beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
+    in
+        case (car.cityMPG , car.retailPrice) of
+            (Just cityMPG, Just retailPrice) ->
+                case (car.carLen, car.dealerCost) of 
+                    (Just carLen, Just dealerCost) ->
+                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName) (toFloat carLen) (toFloat dealerCost)) 
+                    _ -> 
+                        Nothing   
+            _ ->
+                Nothing
 
+
+carsToXyData : List Car -> XyData
+carsToXyData my_cars = 
+    let         
+        filtered_cars : List Point
+        filtered_cars = List.filterMap car_to_point my_cars
+    in
+
+    XyData "cityMPG" "retailPrice" filtered_cars
+
+filterCarsAndCarModel : List Car -> ( List Car, List Car)
+filterCarsAndCarModel all_cars = 
+    let 
+        is_car : Car -> Bool
+        is_car car = 
+            if car.carType == chosenCarType then
+                case (car.cityMPG , car.retailPrice) of
+                    (Just cityMPG, Just retailPrice) ->
+                        case (car.carLen, car.dealerCost) of 
+                            (Just carLen, dealerCost) ->
+                                True
+                            _ -> 
+                                False   
+                    _ ->
+                        False
+            else
+                False
+    in 
+
+    List.partition (\x -> is_car x) all_cars
+
+getAverage : List Car -> Maybe Float
+getAverage carsList = 
+    let 
+        carToMPG : Car -> Int
+        carToMPG car = 
+            case car.cityMPG of 
+                Just cityMPG ->
+                    cityMPG
                 _ ->
-                    False
+                    0
 
-        _ ->
-            False
-
-
-carToIsCar : Car -> Maybe IsCar
-carToIsCar car =
-    case ( car.retailPrice, car.dealerCost ) of
-        ( Just retailPrice, Just dealerCost ) ->
-            case ( car.cityMPG, car.carLen ) of
-                ( Just cityMPG, Just carLen ) ->
-                    Just
-                        { vehicleName = car.vehicleName
-                        , carType = car.carType
-                        , retailPrice = retailPrice
-                        , dealerCost = dealerCost
-                        , cityMPG = cityMPG
-                        , carLen = carLen
-                        }
-
-                _ ->
-                    Nothing
-
-        _ ->
-            Nothing
+        carsMPG = List.map carToMPG carsList
+    in 
+    Stat.average (List.map toFloat carsMPG)
 
 
-transformCars : List Car -> List IsCar
-transformCars carList =
+getCarsSplitLowerHigherMPG : List Car -> (List Car, List Car)
+getCarsSplitLowerHigherMPG my_cars =
     let
-        filteredCars =
-            List.filter checkCar carList
+        average : Float
+        average =  
+            Maybe.withDefault 0 (getAverage my_cars)
     in
-    List.filterMap carToIsCar filteredCars
 
+    List.partition (\x -> toFloat (Maybe.withDefault 0 x.cityMPG) <= average) my_cars
 
-averageCityMPG : List IsCar -> Float
-averageCityMPG carList =
+dataToXyDataQuantil : List Float -> List Float -> XyData
+dataToXyDataQuantil f_values quantiles =
     let
-        cityMPGList =
-            List.map (\x -> x.cityMPG) carList
+        points_values : List (Float, Float)
+        points_values =
+            List.map2 Tuple.pair f_values quantiles
 
-        sum =
-            List.foldl (+) 0 cityMPGList
+        points : List (Float, Float) -> List Point
+        points tuple_list =  
+            List.map point_values_to_point tuple_list
     in
-    toFloat sum / toFloat (List.length cityMPGList)
+    XyData "f_value cityMPG" "quantiles cityMPG" (points points_values)
 
 
-sortCarsInClasses : List IsCar -> CarType -> ( List IsCar, List IsCar, List IsCar )
-sortCarsInClasses carList choosenClass =
-    let
-        ( inClass, outClass ) =
-            List.partition (\x -> x.carType == choosenClass) carList
+point_values_to_point :  (Float, Float) -> Point
+point_values_to_point tuple =
+    Point ("(" ++ String.fromFloat (Tuple.first tuple) ++ ", " ++ String.fromFloat (Tuple.second tuple) ++ ")") (Tuple.first tuple) (Tuple.second tuple)
 
-        average =
-            averageCityMPG inClass
-
-        underAvarage =
-            List.filter (\x -> toFloat x.cityMPG <= average) inClass
-
-        overAverage =
-            List.filter (\x -> toFloat x.cityMPG > average) inClass
-    in
-    ( outClass, underAvarage, overAverage )
-
-
-carTypeToString : CarType -> String
-carTypeToString t =
-    case t of
-        Small_Sporty_Compact_Large_Sedan ->
-            "Small Sporty Compact Large Sedan"
-
-        Sports_Car ->
-            "Sports Car"
-
-        SUV ->
-            "SUV"
-
-        Wagon ->
-            "Wagon"
-
-        Minivan ->
-            "Minivan"
-
-        Pickup ->
-            "Pickup"
-
-
-carToPoint : IsCar -> Point
-carToPoint car =
-    let
-        x =
-            toFloat car.cityMPG
-
-        y =
-            toFloat car.retailPrice
-    in
-    { pointName = car.vehicleName ++ "(" ++ String.fromFloat x ++ "," ++ String.fromFloat y ++ ")", x = x, y = y }
-
-
-carsToPoints : List IsCar -> List Point
-carsToPoints carList =
-    List.map carToPoint carList
-
-
-carsToXyData : ( List IsCar, List IsCar, List IsCar ) -> XyData
-carsToXyData ( notClass, under, over ) =
-    XyData "cityMPG" "retailPrice" (carsToPoints notClass) (carsToPoints under) (carsToPoints over)
-
-
-main : Program () Model Msg
+main : Html msg
 main =
-    Browser.sandbox
-        { init = initialModel
-        , view = view
-        , update = update
-        }
-
-
-carTypeOption : CarType -> Html Msg
-carTypeOption carType =
-    Html.option
-        [ Html.Attributes.value (carTypeToString carType) ]
-        [ Html.text (carTypeToString carType) ]
-
-
-carStatsView : Model -> Html Msg
-carStatsView model =
     let
-        ( outClass, underAverage, overAverage ) =
-            sortCarsInClasses (transformCars cars) model.carType
+        xyDataCars =
+            carsToXyData cars
+
+        getCityMPGValues : List Float
+        getCityMPGValues =
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
+
+        f_values = 
+            getCityMPGValues |> List.indexedMap (\i _ -> (toFloat (i+1) - 0.5) / (List.length getCityMPGValues |> toFloat))
+
+        quantiles =
+            f_values |> List.map (\p -> Statistics.quantile p getCityMPGValues)
+
+        xyDataQuantils =
+            -- dataToXyDataQuantil f_values (List.map (Maybe.withDefault 11) quantiles)
+           dataToXyDataQuantil f_values getCityMPGValues
+
+        numberCars =
+            let
+                hasAllAttributes : Car -> Bool
+                hasAllAttributes car = 
+                    case (car.cityMPG , car.retailPrice) of
+                        (Just cityMPG, Just retailPrice) ->
+                            case (car.carLen, car.dealerCost) of 
+                                (Just carLen, dealerCost) ->
+                                    True
+                                _ -> 
+                                    False   
+                        _ ->
+                            False
+                    
+            in
+            
+            String.fromInt <| List.length (List.filter hasAllAttributes cars)
+
+        numberFilterCars =
+            String.fromInt <| List.length filteredModelCars
+
+        filteredModelCars =  
+            Tuple.first <| filterCarsAndCarModel cars
+
+        averageMPGForModel = 
+            Round.round 2 (Maybe.withDefault 0  (getAverage filteredModelCars))
+
+        carsWithLowerMPG =
+            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
+
+        carsWithHigherMPG =
+            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)        
     in
+    
     Html.div []
-        [ Html.select [ Html.Events.onInput ChooseClass ]
-            [ carTypeOption Small_Sporty_Compact_Large_Sedan
-            , carTypeOption Sports_Car
-            , carTypeOption SUV
-            , carTypeOption Wagon
-            , carTypeOption Minivan
-            , carTypeOption Pickup
+        [ 
+        Html.p []
+            [
+                text <| "We have " ++ numberCars ++ " cars in the list with the expected attributes ",
+                text " , ",
+                text <| numberFilterCars ++ " cars are of the type " ++ chosenCarTypeString,
+                text " and ",
+                text <| String.fromInt ((Maybe.withDefault 0 (String.toInt numberCars)) - (Maybe.withDefault 0 (String.toInt numberFilterCars))) ++ " cars are of other types"
             ]
-        , Html.p [] [ Html.text ("Klasse: " ++ carTypeToString model.carType) ]
-        , Html.p [] [ Html.text ("Average: " ++ String.fromFloat (averageCityMPG (underAverage ++ overAverage))) ]
-        , Html.p [] [ Html.text ("Autos nicht in der Klasse: " ++ String.fromInt (List.length outClass)) ]
-        , Html.p [] [ Html.text ("Anzahl Verbrauch <= Durchschnittsverbrauch: " ++ String.fromInt (List.length underAverage)) ]
-        , Html.p [] [ Html.text ("Anzahl Verbrauch > Durchschnittsverbrauch: " ++ String.fromInt (List.length overAverage)) ]
-        ]
-
-
-plotTypeToString : PlotType -> String
-plotTypeToString t =
-    case t of
-        PlotColor ->
-            "Colors"
-
-        PlotBrightness ->
-            "Brightness"
-
-        PlotShape ->
-            "Shape"
-
-
-plotTypeOption : PlotType -> Html Msg
-plotTypeOption plotType =
-    Html.option
-        [ Html.Attributes.value (plotTypeToString plotType) ]
-        [ Html.text ("Different " ++ plotTypeToString plotType) ]
-
-
-scatterplotView : Model -> Html Msg
-scatterplotView model =
-    let
-        ( outClass, underAverage, overAverage ) =
-            sortCarsInClasses (transformCars cars) model.carType
-    in
-    Html.div []
-        [ Html.select [ Html.Events.onInput ChoosePlot ]
-            [ plotTypeOption PlotColor
-            , plotTypeOption PlotBrightness
-            , plotTypeOption PlotShape
+        ,
+        Html.p []
+            [
+                text <| "The average MPG for " ++ chosenCarTypeString ++ "s are " ++ averageMPGForModel ++ "."
             ]
-        , scatterplot model (carsToXyData ( outClass, underAverage, overAverage )) model.plotType
+        ,
+        Html.p []
+            [
+                text <| ( String.fromInt (List.length carsWithLowerMPG)) ++ " " ++ chosenCarTypeString ++ "s have a lower MPG then the average."
+            ]
+            ,
+        Html.p []
+            [
+                text <| ( String.fromInt (List.length carsWithHigherMPG)) ++ " " ++ chosenCarTypeString ++ "s have a higher MPG then the average."
+            ]
+        ,
+        
+
+        scatterplot xyDataQuantils
         ]
 
 
-view : Model -> Html Msg
-view model =
-    Html.div []
-        [ Html.p [] [ Html.text model.error ]
-        , carStatsView model
-        , scatterplotView model
-        ]
+type CarType
+    = Small_Sporty_Compact_Large_Sedan
+    | Sports_Car
+    | SUV
+    | Wagon
+    | Minivan
+    | Pickup
 
 
 type WheelDrive
