@@ -1,4 +1,4 @@
-module Exercise1 exposing (..)
+module Exercise2 exposing (..)
 
 import Axis
 import Html exposing (Html, text)
@@ -24,9 +24,9 @@ chosenCarType2 : CarType
 chosenCarType2 = 
     Minivan
 
-chosenCarTypeString : String
-chosenCarTypeString =
-    case chosenCarType of
+chosenCarTypeString : CarType -> String
+chosenCarTypeString car_type =
+    case car_type of
         SUV ->
             "SUV"
         Small_Sporty_Compact_Large_Sedan ->
@@ -170,6 +170,7 @@ scatterplot model =
                 .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
                 .lower circle { stroke: rgba(147, 250, 165,0.5); fill: rgba(147, 250, 165,0.5); }
                 .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
+                line { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
             """ ]
             ,
             g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
@@ -190,6 +191,21 @@ scatterplot model =
             , 
             g [ transform [ Translate padding padding ], class ["not"] ]
                 (List.map (point xScaleLocal yScaleLocal) model.data)
+            ,
+            line
+                [
+                x1 (Scale.convert xScaleLocal (10))
+                , x2 (Scale.convert xScaleLocal (20))
+                , y1 (Scale.convert yScaleLocal (14))
+                , y2 (Scale.convert yScaleLocal (20))
+                ]
+                -- [
+                -- x1 (Scale.convert xScaleLocal (List.minimum yValues |> Maybe.withDefault 0))
+                -- , x2 (Scale.convert xScaleLocal (List.maximum yValues |> Maybe.withDefault 0))
+                -- , y1 (Scale.convert yScaleLocal (List.minimum yValues |> Maybe.withDefault 0))
+                -- , y2 (Scale.convert yScaleLocal (List.maximum yValues |> Maybe.withDefault 0))
+                -- ]
+                []
         ]
 
 type alias Point =
@@ -310,6 +326,19 @@ dataToXyDataQuantil f_values quantiles =
     in
     XyData "f_value cityMPG" "quantiles cityMPG" (points points_values)
 
+dataToXyDataQuantilQQ : List Float -> List Float -> XyData
+dataToXyDataQuantilQQ quantiles1 quantiles2 =
+    let
+        points_values : List (Float, Float)
+        points_values =
+            List.map2 Tuple.pair quantiles1 quantiles2
+
+        points : List (Float, Float) -> List Point
+        points tuple_list =  
+            List.map point_values_to_point tuple_list
+    in
+    XyData ("quantiles cityMPG" ++ chosenCarTypeString chosenCarType) ("quantiles cityMPG"++ chosenCarTypeString chosenCarType2) (points points_values)
+
 
 point_values_to_point :  (Float, Float) -> Point
 point_values_to_point tuple =
@@ -332,15 +361,25 @@ main =
         f_values = 
             getCityMPGValues |> List.indexedMap (\i _ -> (toFloat (i+1) - 0.5) / (List.length getCityMPGValues |> toFloat))
 
-        -- not used
-        -- quantiles =
-        --     f_values |> List.map (\p -> Statistics.quantile p getCityMPGValues)
+        f_values2 = 
+            getCityMPGValues2 |> List.indexedMap (\i _ -> (toFloat (i+1) - 0.5) / (List.length getCityMPGValues2 |> toFloat))
 
         xyDataQuantils =
            dataToXyDataQuantil f_values getCityMPGValues
 
         xyDataQuantils2 =
-           dataToXyDataQuantil f_values getCityMPGValues2
+           dataToXyDataQuantil f_values2 getCityMPGValues2
+
+        xyDataQuantilQQ =
+           dataToXyDataQuantilQQ quantiles quantiles2
+
+        quantiles : List Float
+        quantiles =
+           f_values |> List.map (\p -> Maybe.withDefault 0 (Statistics.quantile p getCityMPGValues))
+
+        quantiles2 : List Float
+        quantiles2 =
+           f_values |> List.map (\p -> Maybe.withDefault 0 (Statistics.quantile p getCityMPGValues2))
 
         numberCars =
             let
@@ -363,11 +402,14 @@ main =
         numberFilterCars =
             String.fromInt <| List.length filteredModelCars
 
+        numberFilterCars2 =
+            String.fromInt <| List.length filteredModelCars2
+
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
 
         filteredModelCars2 =  
-            Tuple.first <| filterCarsAndCarModel cars
+            Tuple.first <| filterCarsAndCarModel2 cars
 
         averageMPGForModel = 
             Round.round 2 (Maybe.withDefault 0  (getAverage filteredModelCars))
@@ -376,33 +418,24 @@ main =
             Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
 
         carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)        
+            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)   
+     
+            
+                
+           
+
     in
     
     Html.div []
         [ 
         Html.p []
             [
-                text <| "We have " ++ numberCars ++ " cars in the list with the expected attributes ",
-                text " , ",
-                text <| numberFilterCars ++ " cars are of the type " ++ chosenCarTypeString,
-                text " and ",
-                text <| String.fromInt ((Maybe.withDefault 0 (String.toInt numberCars)) - (Maybe.withDefault 0 (String.toInt numberFilterCars))) ++ " cars are of other types"
+                text <| numberFilterCars ++ " cars are of the type " ++ (chosenCarTypeString chosenCarType)
             ]
         ,
         Html.p []
             [
-                text <| "The average MPG for " ++ chosenCarTypeString ++ "s are " ++ averageMPGForModel ++ "."
-            ]
-        ,
-        Html.p []
-            [
-                text <| ( String.fromInt (List.length carsWithLowerMPG)) ++ " " ++ chosenCarTypeString ++ "s have a lower MPG then the average."
-            ]
-            ,
-        Html.p []
-            [
-                text <| ( String.fromInt (List.length carsWithHigherMPG)) ++ " " ++ chosenCarTypeString ++ "s have a higher MPG then the average."
+                text <| numberFilterCars2 ++ " cars are of the type " ++ (chosenCarTypeString chosenCarType2)
             ]
         ,
         
@@ -410,6 +443,8 @@ main =
         scatterplot xyDataQuantils
         ,
         scatterplot xyDataQuantils2
+        ,
+        scatterplot xyDataQuantilQQ
         ]
 
 
