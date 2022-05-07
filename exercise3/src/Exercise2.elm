@@ -5,14 +5,13 @@ import Html exposing (Html, text)
 import Scale exposing (ContinuousScale)
 import Statistics
 import TypedSvg exposing (circle, g, rect, style, svg, text_, polyline, polygon, line)
-import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, transform, viewBox, points)
+import TypedSvg.Attributes exposing (class,color, fontFamily, fontSize, textAnchor, transform, viewBox, points)
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y, x1, x2, y1, y2, strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
-import TypedSvg.Attributes exposing (orientation)
+import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..), Paint(..))
 import Stat
-import Round
-import TypedSvg exposing (polygon)
+import Color
+import TypedSvg.Attributes exposing (stroke)
 
 
 
@@ -101,7 +100,6 @@ scatterplot model =
         xScale values =
             Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
 
-
         yScale : List Float -> ContinuousScale Float
         yScale values =
             Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
@@ -109,6 +107,7 @@ scatterplot model =
         xScaleLocal : ContinuousScale Float
         xScaleLocal =
             xScale xValues
+
 
         yScaleLocal : ContinuousScale Float
         yScaleLocal =
@@ -133,19 +132,8 @@ scatterplot model =
             , y = wideExtent yValues |> Tuple.second
             }
 
-        linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
-
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
-
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsNotOfChosenType =
-            Tuple.second <| filterCarsAndCarModel cars
 
 
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
@@ -163,14 +151,9 @@ scatterplot model =
         [ 
             style [] [ TypedSvg.Core.text """
                 .point text { display: none; }
-                .higher .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(196, 77, 86); }
-                .lower .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(147, 250, 165); }
-                .not .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
+                .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
                 .point:hover text { display: inline; }
-                .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
-                .lower circle { stroke: rgba(147, 250, 165,0.5); fill: rgba(147, 250, 165,0.5); }
-                .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
-                line { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
+                circle { stroke: rgba(0, 0, 0,0.2); fill: rgba(255, 255, 255,0.2); }
             """ ]
             ,
             g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
@@ -189,23 +172,19 @@ scatterplot model =
                 [ text model.yDescription]
             ]
             , 
-            g [ transform [ Translate padding padding ], class ["not"] ]
+            g [ transform [ Translate padding padding ] ]
                 (List.map (point xScaleLocal yScaleLocal) model.data)
             ,
-            line
-                [
-                x1 (Scale.convert xScaleLocal (10))
-                , x2 (Scale.convert xScaleLocal (20))
-                , y1 (Scale.convert yScaleLocal (14))
-                , y2 (Scale.convert yScaleLocal (20))
+            g [ transform [ Translate (padding - 1) padding ] ]
+            [line
+                [ x1 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
+                , y1 (Scale.convert yScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
+                , x2 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.maximum yValues ))
+                , y2 (Scale.convert yScaleLocal (Maybe.withDefault 0 <| List.maximum yValues ))
+                , stroke (Paint Color.red)
                 ]
-                -- [
-                -- x1 (Scale.convert xScaleLocal (List.minimum yValues |> Maybe.withDefault 0))
-                -- , x2 (Scale.convert xScaleLocal (List.maximum yValues |> Maybe.withDefault 0))
-                -- , y1 (Scale.convert yScaleLocal (List.minimum yValues |> Maybe.withDefault 0))
-                -- , y2 (Scale.convert yScaleLocal (List.maximum yValues |> Maybe.withDefault 0))
-                -- ]
                 []
+            ]
         ]
 
 type alias Point =
@@ -337,7 +316,7 @@ dataToXyDataQuantilQQ quantiles1 quantiles2 =
         points tuple_list =  
             List.map point_values_to_point tuple_list
     in
-    XyData ("quantiles cityMPG" ++ chosenCarTypeString chosenCarType) ("quantiles cityMPG"++ chosenCarTypeString chosenCarType2) (points points_values)
+    XyData ("quantiles cityMPG " ++ chosenCarTypeString chosenCarType) (" quantiles cityMPG "++ chosenCarTypeString chosenCarType2) (points points_values)
 
 
 point_values_to_point :  (Float, Float) -> Point
@@ -371,7 +350,7 @@ main =
            dataToXyDataQuantil f_values2 getCityMPGValues2
 
         xyDataQuantilQQ =
-           dataToXyDataQuantilQQ quantiles quantiles2
+           dataToXyDataQuantilQQ getCityMPGValues quantiles2
 
         quantiles : List Float
         quantiles =
@@ -409,20 +388,7 @@ main =
             Tuple.first <| filterCarsAndCarModel cars
 
         filteredModelCars2 =  
-            Tuple.first <| filterCarsAndCarModel2 cars
-
-        averageMPGForModel = 
-            Round.round 2 (Maybe.withDefault 0  (getAverage filteredModelCars))
-
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)   
-     
-            
-                
-           
+            Tuple.first <| filterCarsAndCarModel2 cars           
 
     in
     

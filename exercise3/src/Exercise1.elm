@@ -9,10 +9,8 @@ import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, tr
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y, x1, x2, y1, y2, strokeWidth)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
-import TypedSvg.Attributes exposing (orientation)
 import Stat
 import Round
-import TypedSvg exposing (polygon)
 
 
 
@@ -138,16 +136,6 @@ scatterplot model =
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
 
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsNotOfChosenType =
-            Tuple.second <| filterCarsAndCarModel cars
-
-
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
         point scaleX scaleY xyPoint =
             g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
@@ -163,13 +151,9 @@ scatterplot model =
         [ 
             style [] [ TypedSvg.Core.text """
                 .point text { display: none; }
-                .higher .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(196, 77, 86); }
-                .lower .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(147, 250, 165); }
-                .not .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
+                .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
                 .point:hover text { display: inline; }
-                .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
-                .lower circle { stroke: rgba(147, 250, 165,0.5); fill: rgba(147, 250, 165,0.5); }
-                .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
+                circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
             """ ]
             ,
             g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
@@ -188,7 +172,7 @@ scatterplot model =
                 [ text model.yDescription]
             ]
             , 
-            g [ transform [ Translate padding padding ], class ["not"] ]
+            g [ transform [ Translate padding padding ]]
                 (List.map (point xScaleLocal yScaleLocal) model.data)
         ]
 
