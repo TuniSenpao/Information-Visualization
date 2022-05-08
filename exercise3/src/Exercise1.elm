@@ -4,9 +4,9 @@ import Axis
 import Html exposing (Html, text)
 import Scale exposing (ContinuousScale)
 import Statistics
-import TypedSvg exposing (circle, g, rect, style, svg, text_, polyline, polygon, line)
-import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, transform, viewBox, points)
-import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y, x1, x2, y1, y2, strokeWidth)
+import TypedSvg exposing (circle, g, style, svg, text_)
+import TypedSvg.Attributes exposing (class, fontFamily, fontSize, transform, viewBox, points)
+import TypedSvg.Attributes.InPx exposing (cx, cy, r, x, y)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
 import Stat
@@ -17,10 +17,6 @@ import Round
 chosenCarType : CarType
 chosenCarType = 
     SUV
-
-chosenCarType2 : CarType
-chosenCarType2 = 
-    Minivan
 
 chosenCarTypeString : String
 chosenCarTypeString =
@@ -153,7 +149,7 @@ scatterplot model =
                 .point text { display: none; }
                 .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
                 .point:hover text { display: inline; }
-                circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
+                circle { stroke: rgba(0, 0, 0,0.2); fill: rgba(255, 255, 255,0.2); }
             """ ]
             ,
             g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
@@ -234,27 +230,6 @@ filterCarsAndCarModel all_cars =
 
     List.partition (\x -> is_car x) all_cars
 
-filterCarsAndCarModel2 : List Car -> ( List Car, List Car)
-filterCarsAndCarModel2 all_cars = 
-    let 
-        is_car : Car -> Bool
-        is_car car = 
-            if car.carType == chosenCarType2 then
-                case (car.cityMPG , car.retailPrice) of
-                    (Just _, Just _) ->
-                        case (car.carLen, car.dealerCost) of 
-                            (Just _, Just _) ->
-                                True
-                            _ -> 
-                                False   
-                    _ ->
-                        False
-            else
-                False
-    in 
-
-    List.partition (\x -> is_car x) all_cars
-
 getAverage : List Car -> Maybe Float
 getAverage carsList = 
     let 
@@ -309,22 +284,11 @@ main =
         getCityMPGValues =
             List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
 
-        getCityMPGValues2 : List Float
-        getCityMPGValues2 =
-            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars2
-
         f_values = 
             getCityMPGValues |> List.indexedMap (\i _ -> (toFloat (i+1) - 0.5) / (List.length getCityMPGValues |> toFloat))
 
-        -- not used
-        -- quantiles =
-        --     f_values |> List.map (\p -> Statistics.quantile p getCityMPGValues)
-
         xyDataQuantils =
            dataToXyDataQuantil f_values getCityMPGValues
-
-        xyDataQuantils2 =
-           dataToXyDataQuantil f_values getCityMPGValues2
 
         numberCars =
             let
@@ -350,9 +314,6 @@ main =
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
 
-        filteredModelCars2 =  
-            Tuple.first <| filterCarsAndCarModel cars
-
         averageMPGForModel = 
             Round.round 2 (Maybe.withDefault 0  (getAverage filteredModelCars))
 
@@ -367,33 +328,12 @@ main =
         [ 
         Html.p []
             [
-                text <| "We have " ++ numberCars ++ " cars in the list with the expected attributes ",
-                text " , ",
-                text <| numberFilterCars ++ " cars are of the type " ++ chosenCarTypeString,
-                text " and ",
-                text <| String.fromInt ((Maybe.withDefault 0 (String.toInt numberCars)) - (Maybe.withDefault 0 (String.toInt numberFilterCars))) ++ " cars are of other types"
-            ]
-        ,
-        Html.p []
-            [
-                text <| "The average MPG for " ++ chosenCarTypeString ++ "s are " ++ averageMPGForModel ++ "."
-            ]
-        ,
-        Html.p []
-            [
-                text <| ( String.fromInt (List.length carsWithLowerMPG)) ++ " " ++ chosenCarTypeString ++ "s have a lower MPG then the average."
-            ]
-            ,
-        Html.p []
-            [
-                text <| ( String.fromInt (List.length carsWithHigherMPG)) ++ " " ++ chosenCarTypeString ++ "s have a higher MPG then the average."
+                text <| numberFilterCars ++ " cars are of the type " ++ chosenCarTypeString
             ]
         ,
         
 
         scatterplot xyDataQuantils
-        ,
-        scatterplot xyDataQuantils2
         ]
 
 
