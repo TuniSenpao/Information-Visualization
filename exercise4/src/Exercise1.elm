@@ -339,17 +339,18 @@ main =
         quantiles =
             f_values |> List.map (\f -> Maybe.withDefault 0 (Statistics.quantile f getCityMPGValues))
 
-        -- quantilesNorm1 : List Float -> List Float
-        -- quantilesNorm1 quants =
-        --     quants |> List.map (\q -> getMu + getStd * q)
+        quantilesNorm1 : List Float -> List Float
+        quantilesNorm1 quants =
+            quants |> List.map (\q -> getMu + getStd * q)
 
         quantilesNorm2 : List Float -> List Float
         quantilesNorm2 quants =
             quants |> List.map (\q -> invNormalCdf q)
 
         xyDataQuantilQQ =
-        --    dataToXyDataQuantilQQ (quantilesNorm1 quantiles) getCityMPGValues
-            dataToXyDataQuantilQQ (quantilesNorm2 f_values) getCityMPGValues
+            dataToXyDataQuantilQQ (quantilesNorm1 (quantilesNorm2 f_values)) getCityMPGValues
+            -- dataToXyDataQuantilQQ (quantilesNorm1 quantiles) getCityMPGValues
+            -- dataToXyDataQuantilQQ (quantilesNorm2 f_values) getCityMPGValues
 
 
        
