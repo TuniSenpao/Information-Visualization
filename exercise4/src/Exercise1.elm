@@ -5,50 +5,24 @@ import Html exposing (Html, text)
 import Scale exposing (ContinuousScale)
 import Statistics
 import TypedSvg exposing (circle, g, rect, style, svg, text_, polyline, polygon, line)
-import TypedSvg.Attributes exposing (class, fontFamily, fontSize, textAnchor, transform, viewBox, points)
+import TypedSvg.Attributes exposing (class,color, fontFamily, fontSize, textAnchor, transform, viewBox, points)
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y, x1, x2, y1, y2, strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..))
-import TypedSvg.Attributes exposing (orientation)
-import Stat
-import Round
-import TypedSvg exposing (polygon)
- 
-{-
-Überarbeiten sie ihr Elm-Programm zu Scatterplots aus Übung 1 oder Übung 2 und stellen sie einen Quantil-Plot für eine selbst gewählte Autoklasse
-für den Stadtverbrauch (cityMPG) dar. Damit die Daten kompatibel zu Übung 2 sind, filtern sie die Daten, so dass keine fehlenden Werte auf den vier
-Attributen cityMPG, retailPrice, dealerCost und carLen vorhanden sind. Geben Sie vor dem Q-Plot die gewählte Autoklasse und die Anzahl der Autos
-in dieser Klasse in der gefilterten Datenmenge aus.
-
-Hinweise
-    - Ein Q-Plot ist auch ein Scatterplot. Die eine Achse (meist die x-Achse) zeigt die F-Values im Intervall (0,1). 
-        Die andere Achse zeigt die Quantile. Das Intervall hängt von den Daten ab.
-    - Für den Q-Plot brauchen sie eine Liste von Punkten der Form (f-Value, Data-Value). 
-        Bei der Berechnung starten sie am besten mit der Liste der Datenwerte. Mit den Elm-Funkionen List.sort, 
-        List.indexedMap und List.length können sie gesuchte Liste von Punkten bestimmen.
-    - Nutzen sie die Scatterplot-Funktionen aus Übung 1 und 2 um die berechnete Liste von Punkten darzustellen.
-
-    TODO:
-        - Achsenbeschriftung ändern
-        - Berechnung der Punkte ändern -> Point mit x = f-Value und y = data-Value
-
-        Liste von Autos nach cityMPG sortieren mit List.sort
-        i bekommt man indem man List.indexedMap benutzt statt List.map
+import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..), Paint(..))
+import Stat exposing (average)
+import Color
+import TypedSvg.Attributes exposing (stroke)
 
 
-
-Tafel:
-_> Statistics.quantile -> nimmt Float (Qunatil), eine Liste von sortierten Zahlen (die Werte von cityMPG) und gibt den 
-
--}
 
 chosenCarType : CarType
 chosenCarType = 
     SUV
 
-chosenCarTypeString : String
-chosenCarTypeString =
-    case chosenCarType of
+
+chosenCarTypeString : CarType -> String
+chosenCarTypeString car_type =
+    case car_type of
         SUV ->
             "SUV"
         Small_Sporty_Compact_Large_Sedan ->
@@ -123,7 +97,6 @@ scatterplot model =
         xScale values =
             Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
 
-
         yScale : List Float -> ContinuousScale Float
         yScale values =
             Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
@@ -131,6 +104,7 @@ scatterplot model =
         xScaleLocal : ContinuousScale Float
         xScaleLocal =
             xScale xValues
+
 
         yScaleLocal : ContinuousScale Float
         yScaleLocal =
@@ -155,19 +129,8 @@ scatterplot model =
             , y = wideExtent yValues |> Tuple.second
             }
 
-        linearScaleX = Scale.linear ( 0, w ) ( wideExtent xValues )
-
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
-
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsNotOfChosenType =
-            Tuple.second <| filterCarsAndCarModel cars
 
 
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
@@ -185,13 +148,9 @@ scatterplot model =
         [ 
             style [] [ TypedSvg.Core.text """
                 .point text { display: none; }
-                .higher .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(196, 77, 86); }
-                .lower .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(147, 250, 165); }
-                .not .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
+                .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
                 .point:hover text { display: inline; }
-                .higher circle { stroke: rgba(196, 77, 86,0.5); fill: rgba(196, 77, 86,0.5); }
-                .lower circle { stroke: rgba(147, 250, 165,0.5); fill: rgba(147, 250, 165,0.5); }
-                .not circle { stroke: rgba(0, 0, 0,0.1); fill: rgba(255, 255, 255,0.1); }
+                circle { stroke: rgba(0, 0, 0,0.2); fill: rgba(255, 255, 255,0.2); }
             """ ]
             ,
             g [class ["xaxis"], transform [ Translate (padding) (h - padding)]]
@@ -199,7 +158,7 @@ scatterplot model =
                 xAxis xValues 
                 ,
                 text_ [x ((w-3*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text "f-Values cityMPG" ]
+                    [ text model.xDescription ]
             ]
             ,
             g [class ["yaxis"], transform [ Translate (padding) (padding)]]
@@ -207,19 +166,23 @@ scatterplot model =
                 yAxis yValues 
                 ,
                 text_ [x -30, y -20, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                [ text ("quantiles cityMPG")]
+                [ text model.yDescription]
             ]
             , 
-            g [ transform [ Translate padding padding ], class ["not"] ]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsNotOfChosenType))
-            , 
-            g [ transform [ Translate padding padding ], class ["higher"] ]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithHigherMPG))
-            , 
-            g [ transform [ Translate padding padding ], class ["lower"] ]
-                (List.map (point xScaleLocal yScaleLocal) ( List.filterMap car_to_point carsWithLowerMPG))
+            g [ transform [ Translate padding padding ] ]
+                (List.map (point xScaleLocal yScaleLocal) model.data)
+            ,
+            g [ transform [ Translate (padding - 1) padding ] ]
+            [line
+                [ x1 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
+                , y1 (Scale.convert yScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
+                , x2 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.maximum yValues ))
+                , y2 (Scale.convert yScaleLocal (Maybe.withDefault 0 <| List.maximum yValues ))
+                , stroke (Paint Color.red)
+                ]
+                []
+            ]
         ]
-
 
 type alias Point =
     { pointName : String, x : Float, y : Float }
@@ -237,13 +200,12 @@ car_to_point car =
     let
         beschriftung : Int -> Int -> String -> String
         beschriftung c r b = b ++ "(" ++ (String.fromInt c) ++ ", " ++ (String.fromInt r) ++ ")"
-
     in
         case (car.cityMPG , car.retailPrice) of
             (Just cityMPG, Just retailPrice) ->
                 case (car.carLen, car.dealerCost) of 
                     (Just carLen, Just dealerCost) ->
-                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName)(toFloat cityMPG) (toFloat retailPrice)) 
+                        Just (Point (beschriftung cityMPG retailPrice car.vehicleName) (toFloat carLen) (toFloat dealerCost)) 
                     _ -> 
                         Nothing   
             _ ->
@@ -252,59 +214,12 @@ car_to_point car =
 
 carsToXyData : List Car -> XyData
 carsToXyData my_cars = 
-    let       
-
-        car_has_values : Car -> Bool
-        car_has_values car =
-            case (car.cityMPG , car.retailPrice) of
-                    (Just cityMPG, Just retailPrice) ->
-                        case (car.carLen, car.dealerCost) of 
-                            (Just carLen, Just dealerCost) ->
-                                True 
-                            _ -> 
-                                False  
-                    _ ->
-                        False
-
-        filtered_cars : List Car
-        filtered_cars =
-            List.filter car_has_values my_cars
-
-        list_length = List.length my_cars
-
-        -- cityMPG Werte rauslösen, in Liste schreiben und sortieren
-        city_mpg_values : List Float
-        city_mpg_values = List.map (\x -> toFloat x) (List.sort (List.map (\car -> car.cityMPG) filtered_cars))
-
-        -- List.indexedMap für f-Wert Berechnung
-        city_mpg_f_values : List Float
-        city_mpg_f_values = List.indexedMap (\index value -> (index - 0.5)/list_length) city_mpg_values
-
-        filtered_car_points : List Point
-
-
-
-        filtered_car_points = car_to_city_mpg_point (city_mpg_f_values, city_mpg_values)
+    let         
+        filtered_cars : List Point
+        filtered_cars = List.filterMap car_to_point my_cars
     in
 
-    XyData "f-Value cityMPG" "quantile cityMPG" filtered_car_points
-
-
-
-car_to_city_mpg_point : (List Float -> List Float) -> Point
-car_to_city_mpg_point tuple =
-    let 
-        cityMPG_fValues : List Float
-        cityMPG_fValues = Tuple.first tuple
-
-        cityMPG_values : List Int
-        cityMPG_values = tuple.second tuple
-
-        beschriftung : String
-        beschriftung = "(" ++ (String.fromInt cityMPG_fValues) ++ ", " ++ (String.fromInt cityMPG_values) ++ ")"
-    in
-    Point beschriftung cityMPG_fValues cityMPG_values
-
+    XyData "cityMPG" "retailPrice" filtered_cars
 
 filterCarsAndCarModel : List Car -> ( List Car, List Car)
 filterCarsAndCarModel all_cars = 
@@ -313,9 +228,9 @@ filterCarsAndCarModel all_cars =
         is_car car = 
             if car.carType == chosenCarType then
                 case (car.cityMPG , car.retailPrice) of
-                    (Just cityMPG, Just retailPrice) ->
+                    (Just _, Just _) ->
                         case (car.carLen, car.dealerCost) of 
-                            (Just carLen, dealerCost) ->
+                            (Just _, Just _) ->
                                 True
                             _ -> 
                                 False   
@@ -353,21 +268,99 @@ getCarsSplitLowerHigherMPG my_cars =
 
     List.partition (\x -> toFloat (Maybe.withDefault 0 x.cityMPG) <= average) my_cars
 
+dataToXyDataQuantil : List Float -> List Float -> XyData
+dataToXyDataQuantil f_values quantiles =
+    let
+        points_values : List (Float, Float)
+        points_values =
+            List.map2 Tuple.pair f_values quantiles
+
+        points : List (Float, Float) -> List Point
+        points tuple_list =  
+            List.map point_values_to_point tuple_list
+    in
+    XyData "f_value cityMPG" "quantiles cityMPG" (points points_values)
+
+dataToXyDataQuantilQQ : List Float -> List Float -> XyData
+dataToXyDataQuantilQQ quantiles1 quantiles2 =
+    let
+        points_values : List (Float, Float)
+        points_values =
+            List.map2 Tuple.pair quantiles1 quantiles2
+
+        points : List (Float, Float) -> List Point
+        points tuple_list =  
+            List.map point_values_to_point tuple_list
+    in
+    XyData ("Normal quantiles " ++ chosenCarTypeString chosenCarType) (" quantiles cityMPG "++ chosenCarTypeString chosenCarType) (points points_values)
+
+
+point_values_to_point :  (Float, Float) -> Point
+point_values_to_point tuple =
+    Point ("(" ++ String.fromFloat (Tuple.first tuple) ++ ", " ++ String.fromFloat (Tuple.second tuple) ++ ")") (Tuple.first tuple) (Tuple.second tuple)
+
+mu : List Float -> Float
+mu aFloat = List.sum aFloat / (toFloat <| List.length aFloat)
+
+std : List Float -> Float
+std aFloat = Statistics.deviation aFloat |> Maybe.withDefault 0
 
 main : Html msg
 main =
     let
         xyDataCars =
-            carsToXyData filteredModelCars
+            carsToXyData cars
+
+        getCityMPGValues : List Float
+        getCityMPGValues =
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
+
+        getMu =
+            mu getCityMPGValues
+
+        getStd =
+            std getCityMPGValues
+
+        invNormalCdf : Float -> Float
+        invNormalCdf f_value =
+            if f_value >= 0.5 then
+                5.5556 * (1.0 - ((1.0 - f_value) / f_value) ^ 0.1186)
+            else
+                -5.5556 * (1.0 - (f_value / (1.0 - f_value)) ^ 0.1186)
+
+        f_values = 
+            getCityMPGValues |> List.indexedMap (\i _ -> (toFloat (i+1) - 0.5) / (List.length getCityMPGValues |> toFloat))
+
+        xyDataQuantils =
+           dataToXyDataQuantil f_values getCityMPGValues
+
+        quantiles : List Float
+        quantiles =
+            f_values |> List.map (\f -> Maybe.withDefault 0 (Statistics.quantile f getCityMPGValues))
+
+        -- quantilesNorm1 : List Float -> List Float
+        -- quantilesNorm1 quants =
+        --     quants |> List.map (\q -> getMu + getStd * q)
+
+        quantilesNorm2 : List Float -> List Float
+        quantilesNorm2 quants =
+            quants |> List.map (\q -> invNormalCdf q)
+
+        xyDataQuantilQQ =
+        --    dataToXyDataQuantilQQ (quantilesNorm1 quantiles) getCityMPGValues
+            dataToXyDataQuantilQQ (quantilesNorm2 f_values) getCityMPGValues
+
+
+       
 
         numberCars =
             let
                 hasAllAttributes : Car -> Bool
                 hasAllAttributes car = 
                     case (car.cityMPG , car.retailPrice) of
-                        (Just cityMPG, Just retailPrice) ->
+                        (Just _, Just _) ->
                             case (car.carLen, car.dealerCost) of 
-                                (Just carLen, dealerCost) ->
+                                (Just _, _) ->
                                     True
                                 _ -> 
                                     False   
@@ -383,46 +376,32 @@ main =
 
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
+       
 
-        averageMPGForModel = 
-            Round.round 2 (Maybe.withDefault 0  (getAverage filteredModelCars))
-
-        carsWithLowerMPG =
-            Tuple.first (getCarsSplitLowerHigherMPG filteredModelCars)
-
-        carsWithHigherMPG =
-            Tuple.second (getCarsSplitLowerHigherMPG filteredModelCars)        
     in
     
     Html.div []
         [ 
         Html.p []
             [
-                text <| "We have " ++ numberCars ++ " cars in the list with the expected attributes ",
-                text " , ",
-                text <| numberFilterCars ++ " cars are of the type " ++ chosenCarTypeString,
-                text " and ",
-                text <| String.fromInt ((Maybe.withDefault 0 (String.toInt numberCars)) - (Maybe.withDefault 0 (String.toInt numberFilterCars))) ++ " cars are of other types"
+                text <| numberFilterCars ++ " cars are of the type " ++ (chosenCarTypeString chosenCarType)
             ]
         ,
         Html.p []
             [
-                text <| "The average MPG for " ++ chosenCarTypeString ++ "s are " ++ averageMPGForModel ++ "."
+                text <| "mu "++ String.fromFloat getMu
             ]
         ,
         Html.p []
             [
-                text <| ( String.fromInt (List.length carsWithLowerMPG)) ++ " " ++ chosenCarTypeString ++ "s have a lower MPG then the average."
-            ]
-            ,
-        Html.p []
-            [
-                text <| ( String.fromInt (List.length carsWithHigherMPG)) ++ " " ++ chosenCarTypeString ++ "s have a higher MPG then the average."
+                text <| "std " ++ String.fromFloat getStd
             ]
         ,
         
 
-        scatterplot xyDataCars
+        scatterplot xyDataQuantils
+        ,
+        scatterplot xyDataQuantilQQ
         ]
 
 
