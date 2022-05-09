@@ -177,10 +177,10 @@ scatterplot model =
             ,
             g [ transform [ Translate (padding - 1) padding ] ]
             [line
-                [ x1 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
-                , y1 (Scale.convert yScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
-                , x2 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.maximum yValues ))
-                , y2 (Scale.convert yScaleLocal (Maybe.withDefault 0 <| List.maximum yValues ))
+                [ x1 (Scale.convert xScaleLocal ( Tuple.first (wideExtent yValues) ))
+                , y1 (Scale.convert yScaleLocal ( Tuple.first (wideExtent yValues) ))
+                , x2 (Scale.convert xScaleLocal ( Tuple.second (wideExtent yValues) ))
+                , y2 (Scale.convert yScaleLocal ( Tuple.second (wideExtent yValues) ))
                 , stroke (Paint Color.red)
                 ]
                 []
