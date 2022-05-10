@@ -4,14 +4,14 @@ import Axis
 import Html exposing (Html, text)
 import Scale exposing (ContinuousScale)
 import Statistics
-import TypedSvg exposing (circle, g, rect, style, svg, text_, polyline, polygon, line)
-import TypedSvg.Attributes exposing (class,color, fontFamily, fontSize, textAnchor, transform, viewBox, points)
+import TypedSvg exposing (circle, g, rect, style, svg, text_, polyline, polygon, line, path)
+import TypedSvg.Attributes exposing (class,color, fontFamily, fontSize, textAnchor, transform, viewBox, points, d)
 import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, y, x1, x2, y1, y2, strokeWidth)
 import TypedSvg.Core exposing (Svg)
 import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Transform(..), Paint(..))
 import Stat exposing (average)
 import Color
-import TypedSvg.Attributes exposing (stroke)
+import TypedSvg.Attributes exposing (stroke, pathLength)
 
 
 
@@ -66,8 +66,8 @@ defaultExtent =
     ( 0, 100 )
 
 
-scatterplot : XyData -> Svg msg
-scatterplot model =
+scatterplot : XyData -> PlotType -> Svg msg
+scatterplot model plotType=
     let
         xValues : List Float
         xValues =
@@ -131,7 +131,17 @@ scatterplot model =
 
         filteredModelCars =  
             Tuple.first <| filterCarsAndCarModel cars
+        getCityMPGValues : List Float
+        getCityMPGValues =
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
 
+        quantileX : Float -> Float
+        quantileX f_value =
+            Maybe.withDefault 0 (Statistics.quantile f_value xValues)
+
+        quantileY : Float -> Float
+        quantileY f_value =
+            Maybe.withDefault 0 (Statistics.quantile f_value yValues)
 
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
         point scaleX scaleY xyPoint =
@@ -148,7 +158,7 @@ scatterplot model =
         [ 
             style [] [ TypedSvg.Core.text """
                 .point text { display: none; }
-                .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(255, 255, 255); }
+                .point:hover circle { stroke: rgba(0, 0, 0,1.0); fill: rgb(118, 214, 78); }
                 .point:hover text { display: inline; }
                 circle { stroke: rgba(0, 0, 0,0.2); fill: rgba(255, 255, 255,0.2); }
             """ ]
@@ -172,17 +182,36 @@ scatterplot model =
             g [ transform [ Translate padding padding ] ]
                 (List.map (point xScaleLocal yScaleLocal) model.data)
             ,
-            g [ transform [ Translate (padding - 1) padding ] ]
-            [line
-                -- [ x1 (Scale.convert xScaleLocal (Maybe.withDefault 0 <| List.minimum yValues ))
-                [ x1 (Scale.convert xScaleLocal ( Tuple.first (wideExtent yValues) ))
-                , y1 (Scale.convert yScaleLocal ( Tuple.first (wideExtent yValues) ))
-                , x2 (Scale.convert xScaleLocal ( Tuple.second (wideExtent yValues) ))
-                , y2 (Scale.convert yScaleLocal ( Tuple.second (wideExtent yValues) ))
-                , stroke (Paint Color.red)
-                ]
-                []
-            ]
+            case plotType of
+                QQ ->
+                    g [ transform [ Translate (padding - 1) padding ] ]
+                        -- [path 
+                        --     [d """
+                        --         M (Scale.convert xScaleLocal ( quantileX 0.25 )), (Scale.convert yScaleLocal ( quantileY 0.25 ))
+                        --         L (Scale.convert xScaleLocal ( quantileX 0.75 )), (Scale.convert yScaleLocal ( quantileY 0.75 ))
+                        --     """]
+                        --     []      
+                        -- ]
+                        -- [path 
+                        --     [d """
+                        --         M (Scale.convert xScaleLocal ( quantileX 0.25 )), (Scale.convert yScaleLocal ( quantileY 0.25 ))
+                        --         l hier Anstieg einfügen
+                        --     """]
+                        --     []      
+                        -- ]
+                        [line 
+                            [ 
+                                  x1 (Scale.convert xScaleLocal ( quantileX 0.25 ))
+                                , y1 (Scale.convert yScaleLocal ( quantileY 0.25 ))
+                                , x2 (Scale.convert xScaleLocal ( quantileX 0.75 ))
+                                , y2 (Scale.convert yScaleLocal ( quantileY 0.75 ))
+                                , stroke (Paint Color.black)
+                            ]
+                            []
+                        ]      
+          
+                _ ->
+                    g[][]
         ]
 
 type alias Point =
@@ -400,13 +429,25 @@ main =
             ]
         ,
         
-
-        scatterplot xyDataQuantils
+        Html.h3 []
+        [
+            text <| "Q-Plot cityMPG for " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
         ,
-        scatterplot xyDataQuantilQQ
+        scatterplot xyDataQuantils Q
+        ,
+        Html.h3 []
+        [
+            text <| "Normal-QQ-Plot cityMPG for " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
+        ,
+        scatterplot xyDataQuantilQQ QQ
         ]
 
 
+type PlotType
+    = Q
+    | QQ
 type CarType
     = Small_Sporty_Compact_Large_Sedan
     | Sports_Car
