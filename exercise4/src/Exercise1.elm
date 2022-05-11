@@ -129,26 +129,27 @@ scatterplot model plotType=
             , y = wideExtent yValues |> Tuple.second
             }
 
-        filteredModelCars =  
-            Tuple.first <| filterCarsAndCarModel cars
-        getCityMPGValues : List Float
-        getCityMPGValues =
-            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
+        qn25 = getMu + getStd * (invNormalCdf 0.25)
+        qe25 =Maybe.withDefault 0 (Statistics.quantile 0.25 getCityMPGValues)
+        qn75 = getMu + getStd * (invNormalCdf 0.75)
+        qe75 = Maybe.withDefault 0 (Statistics.quantile 0.75 getCityMPGValues)
 
-        quantileX : Float -> Float
-        quantileX f_value =
-            Maybe.withDefault 0 (Statistics.quantile f_value xValues)
+        dx =  qn75-qn25
+        dy = qe75-qe25
 
-        quantileY : Float -> Float
-        quantileY f_value =
-            Maybe.withDefault 0 (Statistics.quantile f_value yValues)
+        anstieg = dy/dx
 
+        abstandZuYAchseUnten = qe25 - (Tuple.first (wideExtent yValues))
+        abstandZuYAchseOben = (Tuple.second (wideExtent yValues)) - qe75
+        string =    "M" ++  String.fromFloat (Scale.convert xScaleLocal ( qn25 - abstandZuYAchseUnten / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe25 - abstandZuYAchseUnten)) ++
+                    "L" ++  String.fromFloat (Scale.convert xScaleLocal ( qn75 + abstandZuYAchseOben / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe75 + abstandZuYAchseOben))
+        
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
         point scaleX scaleY xyPoint =
             g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
                 [ 
                     text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text xyPoint.pointName],
+                    [ text (xyPoint.pointName ++ " " ++ String.fromFloat qn75 ++ " " ++ String.fromFloat qe75 ++ " " ++ String.fromFloat anstieg)],
 
                     circle [ cx 0, cy 0, r (radius) ] [] 
                 ]
@@ -185,34 +186,17 @@ scatterplot model plotType=
             case plotType of
                 QQ ->
                     g [ transform [ Translate (padding - 1) padding ] ]
-                        -- [path 
-                        --     [d """
-                        --         M (Scale.convert xScaleLocal ( quantileX 0.25 )), (Scale.convert yScaleLocal ( quantileY 0.25 ))
-                        --         L (Scale.convert xScaleLocal ( quantileX 0.75 )), (Scale.convert yScaleLocal ( quantileY 0.75 ))
-                        --     """]
-                        --     []      
-                        -- ]
-                        -- [path 
-                        --     [d """
-                        --         M (Scale.convert xScaleLocal ( quantileX 0.25 )), (Scale.convert yScaleLocal ( quantileY 0.25 ))
-                        --         l hier Anstieg einfügen
-                        --     """]
-                        --     []      
-                        -- ]
-                        [line 
-                            [ 
-                                  x1 (Scale.convert xScaleLocal ( quantileX 0.25 ))
-                                , y1 (Scale.convert yScaleLocal ( quantileY 0.25 ))
-                                , x2 (Scale.convert xScaleLocal ( quantileX 0.75 ))
-                                , y2 (Scale.convert yScaleLocal ( quantileY 0.75 ))
-                                , stroke (Paint Color.black)
+                        [path 
+                            [d string
+                            , stroke (Paint Color.black)
                             ]
-                            []
+                            []      
                         ]      
           
                 _ ->
                     g[][]
         ]
+
 
 type alias Point =
     { pointName : String, x : Float, y : Float }
@@ -335,28 +319,38 @@ mu aFloat = List.sum aFloat / (toFloat <| List.length aFloat)
 std : List Float -> Float
 std aFloat = Statistics.deviation aFloat |> Maybe.withDefault 0
 
+filteredModelCars : List Car
+filteredModelCars =  
+            Tuple.first <| filterCarsAndCarModel cars
+
+getCityMPGValues : List Float
+getCityMPGValues =
+    List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
+
+getMu : Float
+getMu =
+    mu getCityMPGValues
+
+getStd : Float
+getStd =
+    std getCityMPGValues
+
+quantilesNorm : List Float -> List Float
+quantilesNorm quants =
+    quants |> List.map (\q -> getMu + getStd * q)
+
+invNormalCdf : Float -> Float
+invNormalCdf f_value =
+    if f_value >= 0.5 then
+        5.5556 * (1.0 - ((1.0 - f_value) / f_value) ^ 0.1186)
+    else
+        -5.5556 * (1.0 - (f_value / (1.0 - f_value)) ^ 0.1186)
+
 main : Html msg
 main =
     let
         xyDataCars =
             carsToXyData cars
-
-        getCityMPGValues : List Float
-        getCityMPGValues =
-            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
-
-        getMu =
-            mu getCityMPGValues
-
-        getStd =
-            std getCityMPGValues
-
-        invNormalCdf : Float -> Float
-        invNormalCdf f_value =
-            if f_value >= 0.5 then
-                5.5556 * (1.0 - ((1.0 - f_value) / f_value) ^ 0.1186)
-            else
-                -5.5556 * (1.0 - (f_value / (1.0 - f_value)) ^ 0.1186)
 
         f_values = 
             getCityMPGValues |> List.indexedMap (\i _ -> (toFloat (i+1) - 0.5) / (List.length getCityMPGValues |> toFloat))
@@ -368,21 +362,13 @@ main =
         quantiles =
             f_values |> List.map (\f -> Maybe.withDefault 0 (Statistics.quantile f getCityMPGValues))
 
-        quantilesNorm1 : List Float -> List Float
-        quantilesNorm1 quants =
-            quants |> List.map (\q -> getMu + getStd * q)
 
-        quantilesNorm2 : List Float -> List Float
-        quantilesNorm2 quants =
+        invNormalCdfQuantiles : List Float -> List Float
+        invNormalCdfQuantiles quants =
             quants |> List.map (\q -> invNormalCdf q)
 
         xyDataQuantilQQ =
-            dataToXyDataQuantilQQ (quantilesNorm1 (quantilesNorm2 f_values)) getCityMPGValues
-            -- dataToXyDataQuantilQQ (quantilesNorm1 quantiles) getCityMPGValues
-            -- dataToXyDataQuantilQQ (quantilesNorm2 f_values) getCityMPGValues
-
-
-       
+            dataToXyDataQuantilQQ (quantilesNorm (invNormalCdfQuantiles f_values)) getCityMPGValues
 
         numberCars =
             let
@@ -404,11 +390,6 @@ main =
 
         numberFilterCars =
             String.fromInt <| List.length filteredModelCars
-
-        filteredModelCars =  
-            Tuple.first <| filterCarsAndCarModel cars
-       
-
     in
     
     Html.div []

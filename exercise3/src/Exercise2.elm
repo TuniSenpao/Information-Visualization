@@ -350,7 +350,7 @@ main =
            dataToXyDataQuantil f_values2 getCityMPGValues2
 
         xyDataQuantilQQ =
-           dataToXyDataQuantilQQ getCityMPGValues quantiles2
+           dataToXyDataQuantilQQ quantiles quantiles2
 
         quantiles : List Float
         quantiles =
