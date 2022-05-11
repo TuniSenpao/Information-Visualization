@@ -139,9 +139,9 @@ scatterplot model plotType=
 
         anstieg = dy/dx
 
-        abstandZuYAchseUnten = qe25 - (Tuple.first (wideExtent yValues))
+        abstandZuXAchseUnten = qe25 - (Tuple.first (wideExtent yValues))
         abstandZuYAchseOben = (Tuple.second (wideExtent yValues)) - qe75
-        string =    "M" ++  String.fromFloat (Scale.convert xScaleLocal ( qn25 - abstandZuYAchseUnten / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe25 - abstandZuYAchseUnten)) ++
+        string =    "M" ++  String.fromFloat (Scale.convert xScaleLocal ( qn25 - abstandZuXAchseUnten / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe25 - abstandZuXAchseUnten)) ++
                     "L" ++  String.fromFloat (Scale.convert xScaleLocal ( qn75 + abstandZuYAchseOben / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe75 + abstandZuYAchseOben))
         
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
