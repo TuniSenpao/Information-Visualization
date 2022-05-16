@@ -1,4 +1,4 @@
-module Exercise1 exposing (..)
+module Exercise2 exposing (..)
 
 import Axis
 import Html exposing (Html, text)
@@ -19,6 +19,22 @@ chosenCarType : CarType
 chosenCarType = 
     SUV
 
+chosenAttribute : CarAttribute
+chosenAttribute =
+    RetailPrice
+
+chosenAttributeString : String
+chosenAttributeString  =
+    case chosenAttribute of
+        RetailPrice ->
+            "retailPrice"
+        CityMPG ->
+            "cityMPG"
+        CarLen ->
+            "carLen"
+        DealerCost ->
+            "dealerCost"
+        
 
 chosenCarTypeString : CarType -> String
 chosenCarTypeString car_type =
@@ -129,19 +145,22 @@ scatterplot model plotType=
             , y = wideExtent yValues |> Tuple.second
             }
 
-        qn25 = getMu + getStd * (invNormalCdf 0.25)
-        qe25 =Maybe.withDefault 0 (Statistics.quantile 0.25 getAttributValues)
-        qn75 = getMu + getStd * (invNormalCdf 0.75)
-        qe75 = Maybe.withDefault 0 (Statistics.quantile 0.75 getAttributValues)
+        qn25 = mu xValues + std xValues * (invNormalCdf 0.25)
+        qe25 = Maybe.withDefault 0 (Statistics.quantile 0.25 yValues)
+        qn75 = mu xValues + std xValues * (invNormalCdf 0.75)
+        qe75 = Maybe.withDefault 0 (Statistics.quantile 0.75 yValues)
 
-        dx =  qn75 - qn25
+        dx = qn75 - qn25
         dy = qe75 - qe25
 
-        anstieg = dy/dx
+        anstieg = 
+            dy/dx
+           
 
         abstandZuXAchse = qe25 - (Tuple.first (wideExtent yValues))
         abstandZuYAchseOben = (Tuple.second (wideExtent yValues)) - qe75
-        string =    "M" ++  String.fromFloat (Scale.convert xScaleLocal ( qn25 - abstandZuXAchse / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe25 - abstandZuXAchse)) ++
+
+        pathDesc =    "M" ++  String.fromFloat (Scale.convert xScaleLocal ( qn25 - abstandZuXAchse / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe25 - abstandZuXAchse)) ++
                     "L" ++  String.fromFloat (Scale.convert xScaleLocal ( qn75 + abstandZuYAchseOben / anstieg)) ++ "," ++ String.fromFloat (Scale.convert yScaleLocal ( qe75 + abstandZuYAchseOben))
         
         point : ContinuousScale Float -> ContinuousScale Float -> Point -> Svg msg
@@ -149,7 +168,7 @@ scatterplot model plotType=
             g [ transform [ Translate (Scale.convert scaleX xyPoint.x) (Scale.convert scaleY xyPoint.y)], class [ "point" ], fontSize <| Px 10.0, fontFamily [ "sans-serif" ] ]
                 [ 
                     text_ [x -25, y -5, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text (xyPoint.pointName ++ " " ++ String.fromFloat qn75 ++ " " ++ String.fromFloat qe75 ++ " " ++ String.fromFloat anstieg)],
+                    [ text xyPoint.pointName],
 
                     circle [ cx 0, cy 0, r (radius) ] [] 
                 ]
@@ -169,7 +188,7 @@ scatterplot model plotType=
                 xAxis xValues 
                 ,
                 text_ [x ((w - 3*padding)/2), y 30, fontFamily ["Helvetica", "sans-serif"], fontSize (px 10) ] 
-                    [ text model.xDescription ]
+                    [ text model.xDescription]
             ]
             ,
             g [class ["yaxis"], transform [ Translate (padding) (padding)]]
@@ -183,11 +202,12 @@ scatterplot model plotType=
             g [ transform [ Translate padding padding ] ]
                 (List.map (point xScaleLocal yScaleLocal) model.data)
             ,
+            
             case plotType of
                 QQ ->
                     g [ transform [ Translate (padding - 1) padding ] ]
                         [path 
-                            [d string
+                            [d pathDesc
                             , stroke (Paint Color.black)
                             ]
                             []      
@@ -293,7 +313,7 @@ dataToXyDataQuantil f_values quantiles =
         points tuple_list =  
             List.map point_values_to_point tuple_list
     in
-    XyData "f_value cityMPG" "quantiles cityMPG" (points points_values)
+    XyData ("f_value " ++ chosenAttributeString) (" quantiles " ++ chosenAttributeString ) (points points_values)
 
 dataToXyDataQuantilQQ : List Float -> List Float -> XyData
 dataToXyDataQuantilQQ quantiles1 quantiles2 =
@@ -306,7 +326,7 @@ dataToXyDataQuantilQQ quantiles1 quantiles2 =
         points tuple_list =  
             List.map point_values_to_point tuple_list
     in
-    XyData ("Normal quantiles " ++ chosenCarTypeString chosenCarType) (" quantiles cityMPG "++ chosenCarTypeString chosenCarType) (points points_values)
+    XyData ("Normal quantiles " ++ chosenCarTypeString chosenCarType) (" quantiles " ++ chosenAttributeString ++ " " ++ chosenCarTypeString chosenCarType) (points points_values)
 
 
 point_values_to_point :  (Float, Float) -> Point
@@ -325,7 +345,16 @@ filteredModelCars =
 
 getAttributValues : List Float
 getAttributValues =
-    List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
+    case chosenAttribute of
+        RetailPrice ->
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.retailPrice |> toFloat) filteredModelCars
+        CityMPG ->
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.cityMPG |> toFloat) filteredModelCars
+        CarLen ->
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.carLen |> toFloat) filteredModelCars
+        DealerCost ->
+            List.sort <| List.map (\x -> Maybe.withDefault 0 x.dealerCost |> toFloat) filteredModelCars
+    
 
 getMu : Float
 getMu =
@@ -369,6 +398,12 @@ main =
 
         xyDataQuantilQQ =
             dataToXyDataQuantilQQ (quantilesNorm (invNormalCdfQuantiles f_values)) getAttributValues
+
+        xyDataQuantilQQLog =
+            dataToXyDataQuantilQQ ((quantilesNorm (invNormalCdfQuantiles f_values))) (List.map (\v -> logBase 2 v) getAttributValues)
+
+        xyDataQuantilQQPower power = 
+            dataToXyDataQuantilQQ ((quantilesNorm (invNormalCdfQuantiles f_values))) (List.map (\v ->  v ^ power) getAttributValues)
 
         numberCars =
             let
@@ -416,13 +451,42 @@ main =
         ]
         ,
         scatterplot xyDataQuantils Q
-        ,
-        Html.h3 []
+
+        , Html.h3 []
         [
-            text <| "Normal-QQ-Plot cityMPG for " ++ chosenCarTypeString chosenCarType ++ "s"
+            text <| "Normal-QQ-Plot " ++ chosenAttributeString ++ " for " ++ chosenCarTypeString chosenCarType ++ "s"
         ]
-        ,
-        scatterplot xyDataQuantilQQ QQ
+        , scatterplot xyDataQuantilQQ QQ
+
+        , Html.h3 []
+        [
+            text <| "Logarithmus Transformation " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
+        , scatterplot xyDataQuantilQQLog QQ
+
+        , Html.h3 []
+        [
+            text <| "PowerTransformation mit Tau -0.5 " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
+        , scatterplot (xyDataQuantilQQPower -0.5) QQ
+        , Html.h3 []
+        [
+            text <| "PowerTransformation mit Tau -2 " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
+        , scatterplot (xyDataQuantilQQPower -2) QQ
+
+        , Html.h3 []
+        [
+            text <| "PowerTransformation mit Tau 1.5 " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
+        , scatterplot (xyDataQuantilQQPower 1.5) QQ
+
+        , Html.h3 []
+        [
+            text <| "PowerTransformation mit Tau 2 " ++ chosenCarTypeString chosenCarType ++ "s"
+        ]
+        , scatterplot (xyDataQuantilQQPower 2) QQ
+        
         ]
 
 
@@ -443,6 +507,13 @@ type WheelDrive
     | Rear_Wheel_Drive
     | Front_Wheel_Drive
 
+type CarAttribute
+    = CarLen
+    | RetailPrice
+    | DealerCost
+    | CityMPG
+
+    
 
 type alias Car =
     { vehicleName : String
@@ -460,6 +531,7 @@ type alias Car =
     , carLen : Maybe Int
     , carWidth : Maybe Int
     }
+
 
 
 cars : List Car
