@@ -1,19 +1,31 @@
 module Exercise1 exposing (..)
 
-import Html exposing (Html, a, li, ul)
+import Html exposing (Html, text)
 import Scale exposing (ContinuousScale)
+import Scale.Color
+import Axis
 import Statistics
 import TypedSvg exposing (circle, g, line, path, rect, style, svg, text_)
-import TypedSvg.Attributes exposing (class, d, fontFamily, fontSize, stroke, strokeWidth, textAnchor, transform, viewBox)
-import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, x1, x2, y, y1, y2)
+import TypedSvg.Attributes exposing (fill, class, d, fontFamily, fontSize, stroke, textAnchor, transform, viewBox)
+import TypedSvg.Attributes.InPx exposing (cx, cy, height, r, width, x, x1, x2, y, y1, y2, strokeWidth)
 import TypedSvg.Core exposing (Svg)
-import TypedSvg.Types exposing (AnchorAlignment(..), Length(..), Paint(..), Transform(..))
+import TypedSvg.Types exposing (px, AnchorAlignment(..), Length(..), Paint(..), Transform(..))
 import Path exposing (Path)
 import Stat exposing (median)
+import Shape
+import Color
 
 w : Float
 w =
-    720
+    250
+
+padding : Float
+padding =
+    60
+
+tickCount : Int
+tickCount =
+    5
 
 mapConsecutive : (a -> a -> b) -> List a -> Maybe (List b)
 mapConsecutive f l =
@@ -52,26 +64,112 @@ computeAspectRatio data =
 
 main : Html msg
 main =
-    Html.div []
-        [ Html.text <|
-            (sunspots
+    let
+        ar =
+            sunspots
                 |> List.map (\( x, y ) -> Point "" (toFloat x) y)
                 |> computeAspectRatio
                 |> (\a ->
                         case a of
-                            Nothing ->
-                                "Aspect-Ratio nicht berechnet."
-
-                            Just ar ->
-                                "Aspect Ratio: " ++ String.fromFloat ar
+                            Just aR ->
+                                a
+                            _ ->
+                                Nothing
+                                
                    )
+            
+    in
+    Html.div []
+        [ Html.text <| 
+            (case ar of 
+                Nothing -> 
+                    "Aspect-Ratio nicht berechnet."
+                Just aspectRatio ->
+                     "Aspect Ratio: " ++ String.fromFloat aspectRatio
+                
             )
-        -- , timeseries sunspots computeAspectRatio
+            
+        , timeseries sunspots ar
         ]
 
 timeseries :  List (Int, Float) -> Maybe Float -> Svg msg
-timeseries =  data -> aspect_ratio -> Svg msg
-    -- TODO
+timeseries data aspect_ratio =
+    let 
+
+        h = w
+            -- case aspect_ratio of
+            --     Just ar ->
+            --         w / ar
+            --     _ ->
+            --         w
+
+        xValues : List Float
+        xValues =
+            List.map (\x -> Tuple.first x |> toFloat) data
+
+        yValues : List Float
+        yValues =
+            List.map (\x -> Tuple.second x) data
+
+
+        wideExtent : List Float -> ( Float, Float )
+        wideExtent values =
+            case (Statistics.extent values) of
+                Just (a , b) ->
+                    let
+                        data_width = b - a
+                        heuristic = data_width / toFloat (2 * tickCount)
+                    in
+                    if a - heuristic > 0 then
+                        (a - heuristic, b + heuristic )
+                    else
+                        (0,  b + heuristic)
+                _ ->
+                    (0, 200)
+
+        lineGenerator : (Int, Float) -> Maybe (Float, Float)
+        lineGenerator (x ,y) =
+            Just ( Scale.convert (xScale xValues) (toFloat x), Scale.convert (yScale yValues) y )
+
+        xScale : List Float -> ContinuousScale Float
+        xScale values =
+            Scale.linear ( 0, w - 2 * padding ) ( wideExtent values )
+
+        yScale : List Float -> ContinuousScale Float
+        yScale values =
+            Scale.linear ( h - 2 * padding, 0 ) ( wideExtent values )
+
+        line =
+            List.map (\i -> (Tuple.first i, Tuple.second i)) data
+                |> List.map lineGenerator
+                |> Shape.line Shape.monotoneInXCurve
+
+    in
+    svg[ viewBox 0 0 w h]
+    [
+        g [ transform [ Translate (padding - 1) (h - padding) ] ]
+            [ Axis.bottom [ Axis.tickCount 10 ] (xScale xValues) ]
+        ,
+        g [ transform [ Translate (padding - 1) padding ] ]
+            [ Axis.left [ Axis.tickCount 3 ] (yScale yValues)
+            , text_ [ fontFamily [ "sans-serif" ], fontSize (px 10), x 5, y 5 ] [ text "Occurences" ]
+            ]
+        ,
+        g [ transform [ Translate padding padding ], class [ "series" ] ]
+            (List.map
+                (\ (year, value) ->
+                    Path.element (line)
+                        [ stroke <| Paint <| Color.black
+                        , strokeWidth 3
+                        , fill PaintNone
+                        ]
+                )
+                data
+            )
+
+
+        
+    ]
 
 
 
