@@ -77,7 +77,7 @@ tickCount =
     5
 
 
-defaultExtent : ( number, number1 )
+defaultExtent : ( number, number )
 defaultExtent =
     ( 0, 100 )
 
